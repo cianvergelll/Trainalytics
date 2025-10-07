@@ -15,15 +15,17 @@ export async function handleLogin(req, res) {
 
         const { user, userType } = result;
 
+        const role = userType === 'admin' ? user.Role : 'student';
+
         const token = jwt.sign(
-            { id: user.ID, type: userType },
+            { id: user.ID, role: role },
             process.env.JWT_SECRET || 'your_default_secret_key',
             { expiresIn: '1h' }
         );
 
         await authService.createSession(user.ID, userType, token);
 
-        return res.json({ token, role: userType });
+        return res.json({ token, role: role });
     } catch (err) {
         console.error('Login controller error:', err);
         return res.status(500).json({ error: 'Server error' });

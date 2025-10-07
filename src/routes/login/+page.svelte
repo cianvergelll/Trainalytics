@@ -19,10 +19,23 @@
 				const data = await response.json();
 				localStorage.setItem('sessionToken', data.token);
 
-				if (data.role === 'admin') {
-					goto('/admin/dashboard');
-				} else {
-					goto('/student/dashboard');
+				switch (data.role) {
+					case 'SuperAdmin':
+						goto('/admin/superadmin/dashboard');
+						break;
+
+					case 'Coordinator':
+					case 'Staff':
+						goto('/admin/main/dashboard');
+						break;
+
+					case 'student':
+						goto('/student/dashboard');
+						break;
+
+					default:
+						error = 'Unknown role received. Please contact support.';
+						localStorage.removeItem('sessionToken');
 				}
 			} else {
 				const err = await response.json();
