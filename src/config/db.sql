@@ -55,3 +55,41 @@ CREATE TABLE `im_sessions` (
   PRIMARY KEY (`ID`),
   UNIQUE KEY `session_token` (`session_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- im_system.im_cec_students definition
+
+CREATE TABLE `im_cec_students` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `StudentName` varchar(100) NOT NULL,
+  `SchoolID` varchar(10) NOT NULL,
+  `DepartmentID` int(11) NOT NULL,
+  `StudentID` varchar(50) NOT NULL,
+  `BirthDate` date DEFAULT NULL,
+  `Email` varchar(100) DEFAULT NULL,
+  `ContactNumber` varchar(20) DEFAULT NULL,
+  `CompanyName` varchar(100) DEFAULT NULL,
+  `CompanyAddress` text DEFAULT NULL,
+  `TargetHours` decimal(7,2) DEFAULT 0.00,
+  `TotalHours` decimal(7,2) DEFAULT 0.00,
+  `RemainingHours` decimal(7,2) DEFAULT 0.00,
+  `HasMOA` tinyint(1) DEFAULT 0,
+  `HasEndorsement` tinyint(1) DEFAULT 0,
+  `HasWaiver` tinyint(1) DEFAULT 0,
+  `HasCompletion` tinyint(1) DEFAULT 0,
+  `HasEvaluation` tinyint(1) DEFAULT 0,
+  `IsCompleted` tinyint(1) DEFAULT 0,
+  `IsActive` tinyint(1) DEFAULT 1,
+  `Extra1` varchar(255) DEFAULT NULL,
+  `Extra2` varchar(255) DEFAULT NULL,
+  `Extra3` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `unique_student_id` (`StudentID`),
+  KEY `idx_student_name` (`StudentName`),
+  KEY `idx_school` (`SchoolID`),
+  KEY `idx_department` (`DepartmentID`),
+  KEY `idx_email` (`Email`),
+  KEY `idx_company` (`CompanyName`),
+  KEY `idx_is_active` (`IsActive`),
+  KEY `idx_is_completed` (`IsCompleted`),
+  CONSTRAINT `im_cec_students_ibfk_1` FOREIGN KEY (`SchoolID`) REFERENCES `im_schools` (`schoolID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
