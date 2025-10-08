@@ -86,6 +86,7 @@
 				goto(correctDashboard);
 				return;
 			}
+
 			if (isLoginPage) {
 				const correctDashboard = getDashboardByRole(userRole);
 				goto(correctDashboard);
@@ -94,6 +95,7 @@
 		} else {
 			localStorage.removeItem('sessionToken');
 			if (!isLoginPage) goto('/login');
+			return;
 		}
 
 		if ($userSession) {
@@ -104,6 +106,9 @@
 				headers: { Authorization: `Bearer ${token}` }
 			});
 			if (!response.ok) {
+				if (response.status === 401) {
+					alert('Your session has expired. You will be logged out.');
+				}
 				localStorage.removeItem('sessionToken');
 				if (!isLoginPage) goto('/login');
 			}
