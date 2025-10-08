@@ -33,7 +33,7 @@
 		<li
 			class="mt-3 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
-			<a href="/home">Dashboard</a>
+			<a href="/admin/main/dashboard">Dashboard</a>
 		</li>
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
@@ -66,7 +66,7 @@
 			<a href="/notifications">Reports</a>
 		</li>
 		<li
-			class="mt-45 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
+			class="mt-30 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
 			<a href="foo">Settings</a>
 		</li>
