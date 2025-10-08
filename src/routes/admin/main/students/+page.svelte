@@ -3,7 +3,6 @@
 	import SideNav from '$lib/components/SideNav.svelte';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
-	// Sample data to populate the master list
 	const students = [
 		{
 			id: '202310001',
