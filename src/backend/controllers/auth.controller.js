@@ -45,3 +45,7 @@ export async function handleLogout(req, res) {
         return res.status(500).json({ error: 'Server error' });
     }
 }
+
+export async function handleVerifySession(req, res) {
+    res.status(200).json({ message: 'Session is valid.' });
+}

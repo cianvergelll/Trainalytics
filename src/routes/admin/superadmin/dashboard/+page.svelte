@@ -9,7 +9,12 @@
 	async function fetchSchools() {
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch('/api/schools');
+			const res = await fetch('/api/schools', {
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
 			if (res.status === 401) {
 				localStorage.removeItem('sessionToken');
 				goto('/login');
@@ -28,9 +33,13 @@
 	async function addSchool(event) {
 		event.preventDefault();
 		try {
+			const token = localStorage.getItem('sessionToken');
 			await fetch('/api/schools', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
 				body: JSON.stringify({ schoolID: newSchoolId, school_name: newSchoolName })
 			});
 			newSchoolId = '';
@@ -44,7 +53,13 @@
 	async function deleteSchool(id) {
 		if (confirm('Are you sure you want to delete this school?')) {
 			try {
-				await fetch(`/api/schools/${id}`, { method: 'DELETE' });
+				const token = localStorage.getItem('sessionToken');
+				await fetch(`/api/schools/${id}`, {
+					method: 'DELETE',
+					headers: {
+						Authorization: `Bearer ${token}`
+					}
+				});
 				fetchSchools();
 			} catch (e) {
 				console.error('Failed to delete school:', e);

@@ -1,6 +1,6 @@
 <script>
 	import { goto } from '$app/navigation';
-
+	import { userSession } from '$lib/sessionStore.js';
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
@@ -14,28 +14,27 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email, password })
 			});
-
 			if (response.ok) {
 				const data = await response.json();
 				localStorage.setItem('sessionToken', data.token);
+
+				$userSession = { token: data.token, role: data.role };
 
 				switch (data.role) {
 					case 'SuperAdmin':
 						goto('/admin/superadmin/dashboard');
 						break;
-
 					case 'Coordinator':
 					case 'Staff':
 						goto('/admin/main/dashboard');
 						break;
-
 					case 'student':
 						goto('/student/dashboard');
 						break;
-
 					default:
 						error = 'Unknown role received. Please contact support.';
 						localStorage.removeItem('sessionToken');
+						$userSession = null;
 				}
 			} else {
 				const err = await response.json();
