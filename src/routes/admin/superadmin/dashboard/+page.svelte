@@ -8,7 +8,13 @@
 
 	async function fetchSchools() {
 		try {
+			const token = localStorage.getItem('sessionToken');
 			const res = await fetch('/api/schools');
+			if (res.status === 401) {
+				localStorage.removeItem('sessionToken');
+				goto('/login');
+				return;
+			}
 			if (res.ok) {
 				schools = await res.json();
 			}
