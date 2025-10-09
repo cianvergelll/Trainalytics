@@ -1,46 +1,57 @@
 <script>
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import SideNav from '$lib/components/SideNav.svelte';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
-	const students = [
-		{
-			id: '202310001',
-			name: 'Maria Santos',
-			avatar: 'https://randomuser.me/api/portraits/women/68.jpg',
-			status: 'Completed',
-			section: 'BSIT-4A',
-			hours: '600 Hours',
-			company: 'ABC Tech Solutions'
-		},
-		{
-			id: '202310002',
-			name: 'Diana Barleta',
-			avatar: 'https://randomuser.me/api/portraits/women/69.jpg',
-			status: 'On-going',
-			section: 'BSIT-4B',
-			hours: '600 Hours',
-			company: 'Tech Solutions'
-		},
-		{
-			id: '202310003',
-			name: 'Darlyn Caballero',
-			avatar: 'https://randomuser.me/api/portraits/women/70.jpg',
-			status: 'None',
-			section: 'BSIT-4C',
-			hours: '300 Hours',
-			company: 'TechNavyPhil'
-		},
-		{
-			id: '202310004',
-			name: 'John Doe',
-			avatar: 'https://randomuser.me/api/portraits/men/75.jpg',
-			status: 'On-going',
-			section: 'BSIT-4B',
-			hours: '600 Hours',
-			company: 'Web Wizards'
+	let students = $state([]);
+	let currentPage = $state(1);
+	let totalPages = $state(1);
+	const limit = 10;
+
+	async function fetchStudents(page) {
+		const cacheKey = `student_page_${page}`;
+		const cachedData = sessionStorage.getItem(cacheKey);
+		if (cachedData) {
+			const data = JSON.parse(cachedData);
+			students = data.students;
+			currentPage = data.currentPage;
+			totalPages = data.totalPages;
+			return;
 		}
-	];
+
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/students?page=${page}&limit=${limit}`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (res.status === 401) {
+				sessionStorage.clear();
+				localStorage.removeItem('sessionToken');
+				goto('/login');
+				return;
+			}
+
+			if (res.ok) {
+				const data = await res.json();
+				students = data.students;
+				currentPage = data.currentPage;
+				totalPages = data.totalPages;
+				sessionStorage.setItem(cacheKey, JSON.stringify(data));
+			}
+		} catch (e) {
+			console.error('An error occurred:', e);
+		}
+	}
+
+	function changePage(newPage) {
+		if (newPage < 1 || newPage > totalPages) return;
+		fetchStudents(newPage);
+	}
+
+	onMount(() => {
+		fetchStudents(1);
+	});
 
 	async function handleLogout() {
 		const token = localStorage.getItem('sessionToken');
@@ -60,18 +71,18 @@
 	}
 </script>
 
-<div class="flex h-screen w-screen items-center justify-start bg-gray-50">
-	<div class="ml-5 flex h-[95%] w-1/5 flex-col rounded-xl shadow-lg">
+<div class="flex h-screen gap-4 bg-gray-50 p-4">
+	<div class="h-full w-1/5 flex-shrink-0">
 		<SideNavAdmin />
 	</div>
 
-	<div class="ml-5 flex h-[95%] w-[78%] flex-col rounded-xl bg-white p-8 shadow-lg">
+	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
 		<div class="mb-6">
 			<h1 class="text-3xl font-bold text-gray-800">Student's Master List</h1>
 			<p class="text-sm text-gray-500">Pages / Students / Student's Master List</p>
 		</div>
 
-		<div class="flex h-full flex-col">
+		<div class="flex min-h-0 flex-grow flex-col">
 			<div class="mb-4 flex items-center justify-between">
 				<div class="flex items-center gap-4">
 					<div class="relative">
@@ -81,33 +92,23 @@
 							class="w-64 rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-green-500 focus:outline-none"
 						/>
 						<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-							<svg
-								class="h-5 w-5 text-gray-400"
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
-								<path
+							<svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"
+								><path
 									fill-rule="evenodd"
 									d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
 									clip-rule="evenodd"
-								/>
-							</svg>
+								/></svg
+							>
 						</div>
 					</div>
 					<button
 						class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
 					>
-						<svg
-							class="h-5 w-5"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
+						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+							><path
 								d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
-							/>
-						</svg>
+							/></svg
+						>
 						Filter By
 					</button>
 				</div>
@@ -119,16 +120,11 @@
 					<button
 						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
 					>
-						<svg
-							class="h-5 w-5"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
+						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+							><path
 								d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
-							/>
-						</svg>
+							/></svg
+						>
 						Add Student
 					</button>
 				</div>
@@ -148,9 +144,11 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y">
-						{#each students as student (student.id)}
+						{#each students as student (student.StudentID)}
 							<tr class="hover:bg-gray-50">
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.id}</td>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
+									>{student.StudentID}</td
+								>
 								<td class="px-4 py-3 text-sm whitespace-nowrap">
 									{#if student.status === 'Completed'}
 										<span
@@ -172,17 +170,21 @@
 									<div class="flex items-center gap-3">
 										<img
 											src={student.avatar}
-											alt={student.name}
+											alt={student.StudentName}
 											class="h-8 w-8 rounded-full object-cover"
 										/>
-										<span>{student.name}</span>
+										<span>{student.StudentName}</span>
 									</div>
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.section}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.hours}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.company}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
-									<div class="flex items-center gap-3">
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
+									>{student.TargetHours}</td
+								>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
+									>{student.CompanyName}</td
+								>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
+									><div class="flex items-center gap-3">
 										<button
 											class="text-gray-500 hover:text-blue-600"
 											aria-label="View student details"
@@ -230,72 +232,38 @@
 												/>
 											</svg>
 										</button>
-									</div>
-								</td>
+									</div></td
+								>
 							</tr>
 						{/each}
 					</tbody>
 				</table>
 			</div>
 
-			<div class="mt-4 flex items-center justify-center pt-2">
+			<div class="mt-auto flex items-center justify-center pt-4">
 				<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-					<a
-						href="/"
-						class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
+					<button
+						onclick={() => changePage(currentPage - 1)}
+						disabled={currentPage === 1}
+						class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
+						>Prev</button
 					>
-						<span class="sr-only">Previous</span>
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-							<path
-								fill-rule="evenodd"
-								d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-					</a>
-					<a
-						href="/"
-						class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-						>1</a
+					{#each Array(totalPages) as _, i}
+						{@const page = i + 1}
+						<button
+							onclick={() => changePage(page)}
+							class:bg-green-500={currentPage === page}
+							class:text-white={currentPage === page}
+							class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
+							>{page}</button
+						>
+					{/each}
+					<button
+						onclick={() => changePage(currentPage + 1)}
+						disabled={currentPage === totalPages}
+						class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
+						>Next</button
 					>
-					<a
-						href="/"
-						aria-current="page"
-						class="relative z-10 inline-flex items-center bg-green-500 px-4 py-2 text-sm font-semibold text-white"
-						>2</a
-					>
-					<a
-						href="/"
-						class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-						>3</a
-					>
-					<span
-						class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-gray-300 ring-inset"
-						>...</span
-					>
-					<a
-						href="/"
-						class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-						>67</a
-					>
-					<a
-						href="/"
-						class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-						>68</a
-					>
-					<a
-						href="/"
-						class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-					>
-						<span class="sr-only">Next</span>
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-							<path
-								fill-rule="evenodd"
-								d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-					</a>
 				</nav>
 			</div>
 		</div>
