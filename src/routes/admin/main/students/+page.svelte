@@ -6,11 +6,14 @@
 	let students = $state([]);
 	let currentPage = $state(1);
 	let totalPages = $state(1);
+	let searchTerm = $state('');
+	let debounceTimer;
 	const limit = 10;
 
-	async function fetchStudents(page) {
-		const cacheKey = `student_page_${page}`;
+	async function fetchStudents(page, search = '') {
+		const cacheKey = `student_page_${page}_search_${search}`;
 		const cachedData = sessionStorage.getItem(cacheKey);
+
 		if (cachedData) {
 			const data = JSON.parse(cachedData);
 			students = data.students;
@@ -21,9 +24,12 @@
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch(`/api/students?page=${page}&limit=${limit}`, {
-				headers: { Authorization: `Bearer ${token}` }
-			});
+			const res = await fetch(
+				`/api/students?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`,
+				{
+					headers: { Authorization: `Bearer ${token}` }
+				}
+			);
 
 			if (res.status === 401) {
 				sessionStorage.clear();
@@ -44,16 +50,24 @@
 		}
 	}
 
+	function onSearchInput() {
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			fetchStudents(1, searchTerm);
+		}, 300);
+	}
+
 	function changePage(newPage) {
 		if (newPage < 1 || newPage > totalPages) return;
-		fetchStudents(newPage);
+		fetchStudents(newPage, searchTerm);
 	}
 
 	onMount(() => {
-		fetchStudents(1);
+		fetchStudents(1, '');
 	});
 
 	async function handleLogout() {
+		sessionStorage.clear();
 		const token = localStorage.getItem('sessionToken');
 		if (token) {
 			try {
@@ -88,8 +102,10 @@
 					<div class="relative">
 						<input
 							type="text"
-							placeholder="Search..."
+							placeholder="Search by Name or ID..."
 							class="w-64 rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-green-500 focus:outline-none"
+							bind:value={searchTerm}
+							oninput={onSearchInput}
 						/>
 						<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
 							<svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"

@@ -4,8 +4,9 @@ export async function getStudents(req, res) {
     try {
         const page = parseInt(req.query.page || '1', 10);
         const limit = parseInt(req.query.limit || '10', 10);
+        const searchTerm = req.query.search || '';
 
-        const { students: studentsRaw, total } = await studentsService.getStudentsPaginated(page, limit);
+        const { students: studentsRaw, total } = await studentsService.getStudentsPaginated(page, limit, searchTerm);
 
         const students = studentsRaw.map(student => {
             let status = 'None';
