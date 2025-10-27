@@ -1,4 +1,5 @@
 import { pool } from '../../config/db.js';
+import bcrypt from 'bcryptjs';
 
 export async function getStudentsPaginated(page = 1, limit = 10, searchTerm = '', filters = {}) {
     const offset = (page - 1) * limit;
@@ -38,3 +39,58 @@ export async function getStudentsPaginated(page = 1, limit = 10, searchTerm = ''
 
     return { students, total };
 }
+
+export async function createStudent(studentData) {
+    const {
+        studentId,
+        firstName,
+        middleName,
+        lastName,
+        email,
+        contactNumber,
+        classSection,
+        username,
+        password,
+        schoolId
+    } = studentData;
+
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const [userResult] = await conn.query(
+            'INSERT INTO im_users (Username, Password, IsDeleted) VALUES (?, ?, 0)',
+            [username, hashedPassword]
+        );
+
+        const studentName = `${firstName} ${lastName}`;
+        const departmentId = '1';
+        const isActive = 1;
+
+        const [studentResult] = await conn.query(
+            'INSERT INTO im_cec_students (StudentID, StudentName, SchoolID, DepartmentID, Email, ContactNumber, Section, IsActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                studentId,
+                studentName,
+                schoolId,
+                departmentId,
+                email,
+                contactNumber,
+                classSection,
+                isActive
+            ]
+        );
+
+        await conn.commit();
+        return { success: true, userId: userResult.insertId, studentId: studentResult.insertId };
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}
+

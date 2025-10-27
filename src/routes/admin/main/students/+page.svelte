@@ -16,6 +16,7 @@
 	let filterButtonElement = $state();
 
 	let showAddStudentModal = $state(false);
+	let addStudentError = $state('');
 
 	let filterOptions = $state({ companies: [], sections: [] });
 	let selectedFilters = $state({
@@ -24,6 +25,8 @@
 		companies: [],
 		sections: []
 	});
+
+	let schools = $state([]);
 
 	function handleWindowClick(event) {
 		if (showFilterDropdown && filterButtonElement && !filterButtonElement.contains(event.target)) {
@@ -88,6 +91,28 @@
 		}
 	}
 
+	async function fetchSchools() {
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch('/api/schools', {
+				headers: {
+					Authorization: `Bearer ${token}`
+				}
+			});
+
+			if (res.status === 401) {
+				localStorage.removeItem('sessionToken');
+				goto('/login');
+				return;
+			}
+			if (res.ok) {
+				schools = await res.json();
+			}
+		} catch (e) {
+			console.error('Failed to fetch schools:', e);
+		}
+	}
+
 	function applyFilters() {
 		sessionStorage.clear();
 		fetchStudents(1, searchTerm, selectedFilters);
@@ -105,19 +130,43 @@
 
 	async function handleAddStudent(event) {
 		const newStudentData = event.detail;
-		console.log('New student to add:', newStudentData);
+		addStudentError = '';
 
-		showAddStudentModal = false;
-		sessionStorage.clear();
-		fetchStudents(1, searchTerm, selectedFilters);
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch('/api/students', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(newStudentData)
+			});
+
+			if (res.ok) {
+				console.log('Student added successfully');
+				showAddStudentModal = false;
+				sessionStorage.clear();
+				fetchStudents(currentPage, searchTerm, selectedFilters);
+			} else {
+				const err = await res.json();
+				console.error('Failed to add student:', err);
+
+				addStudentError = err.error || 'An unknown error occurred.';
+			}
+		} catch (e) {
+			console.error('Error adding student:', e);
+			addStudentError = 'A network error occurred. Please try again.';
+		}
 	}
 
 	onMount(() => {
-		getFilterOptions().then(() => {
+		Promise.all([getFilterOptions(), fetchSchools()]).then(() => {
 			selectedFilters.companies = [...filterOptions.companies];
 			selectedFilters.sections = [...filterOptions.sections];
 			selectedFilters.status = ['On-going', 'Completed', 'None'];
 			selectedFilters.hours = [600, 480, 300];
+
 			fetchStudents(1, searchTerm, selectedFilters);
 		});
 	});
@@ -155,6 +204,7 @@
 <AddStudentModal
 	show={showAddStudentModal}
 	sections={filterOptions.sections}
+	{schools}
 	on:close={() => (showAddStudentModal = false)}
 	on:add={handleAddStudent}
 />

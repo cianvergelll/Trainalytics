@@ -1,7 +1,7 @@
 <script>
 	import { createEventDispatcher, onMount } from 'svelte';
 
-	let { show = false, sections = [] } = $props();
+	let { show = false, sections = [], schools = [] } = $props();
 
 	let student = $state({
 		studentId: '',
@@ -12,7 +12,8 @@
 		contactNumber: '',
 		classSection: '',
 		username: '',
-		password: ''
+		password: '',
+		schoolId: ''
 	});
 	let modalElement = $state();
 
@@ -25,7 +26,6 @@
 	function handleSubmit(event) {
 		event.preventDefault();
 		dispatch('add', { ...student });
-		handleClose();
 	}
 
 	function handleKeydown(event) {
@@ -166,6 +166,23 @@
 							/>
 						</div>
 						<div>
+							<label for="school" class="block text-sm font-medium text-gray-700">School</label>
+							<select
+								id="school"
+								bind:value={student.schoolId}
+								class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500"
+								required
+							>
+								<option value="" disabled>Select School</option>
+								{#each schools as school}
+									<option value={school.schoolID}>{school.school_name}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
+
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+						<div>
 							<label for="classSection" class="block text-sm font-medium text-gray-700"
 								>Class Section</label
 							>
@@ -181,9 +198,6 @@
 								{/each}
 							</select>
 						</div>
-					</div>
-
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						<div>
 							<label for="username" class="block text-sm font-medium text-gray-700">Username</label>
 							<input
