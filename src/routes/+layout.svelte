@@ -5,27 +5,9 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { userSession } from '$lib/sessionStore.js';
+	import { jwtDecode } from 'jwt-decode';
 
 	let { children } = $props();
-
-	function parseJwt(token) {
-		if (!token) return null;
-		try {
-			const base64Url = token.split('.')[1];
-			const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-			const jsonPayload = decodeURIComponent(
-				atob(base64)
-					.split('')
-					.map(function (c) {
-						return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-					})
-					.join('')
-			);
-			return JSON.parse(jsonPayload);
-		} catch (e) {
-			return null;
-		}
-	}
 
 	function getDashboardByRole(role) {
 		switch (role) {
@@ -42,82 +24,86 @@
 	}
 
 	$effect(() => {
-		if (browser) {
-			handleSession($page.url);
-		}
-	});
+		if (!browser) return;
 
-	async function handleSession(url) {
-		const isLoginPage = url.pathname === '/login';
+		const currentPath = $page.url.pathname;
+		const isLoginPage = currentPath === '/login';
 		const token = localStorage.getItem('sessionToken');
-
+		let session = $userSession;
 		if (!token) {
+			if (session) {
+				console.log('Token missing, clearing session store.');
+				$userSession = null;
+				session = null;
+			}
 			if (!isLoginPage) {
+				console.log(`No token, redirecting from ${currentPath} to /login`);
 				goto('/login');
 			}
 			return;
 		}
 
-		let session = $userSession;
-		if (!session) {
-			session = parseJwt(token);
+		if (token && !session) {
+			try {
+				const decoded = jwtDecode(token);
+				if (decoded && decoded.id && decoded.role && decoded.username && decoded.exp) {
+					if (decoded.exp * 1000 < Date.now()) {
+						console.log('Token expired on initial load.');
+						throw new Error('Token expired');
+					}
+					console.log('Populating session store from token.');
+					$userSession = { token: token, role: decoded.role, username: decoded.username };
+					session = $userSession;
+				} else {
+					throw new Error('Invalid token structure');
+				}
+			} catch (e) {
+				console.error('Token invalid on initial load:', e);
+				localStorage.removeItem('sessionToken');
+				$userSession = null;
+				session = null;
+				if (!isLoginPage) {
+					console.log(`Invalid token, redirecting from ${currentPath} to /login`);
+					goto('/login');
+				}
+				return;
+			}
 		}
 
 		if (session && session.role) {
 			const userRole = session.role;
-			const path = url.pathname;
 			let isAuthorized = false;
 
-			if (path.startsWith('/student') && userRole === 'student') {
+			if (currentPath.startsWith('/student') && userRole === 'student') isAuthorized = true;
+			else if (currentPath.startsWith('/admin/superadmin') && userRole === 'SuperAdmin')
 				isAuthorized = true;
-			} else if (path.startsWith('/admin/superadmin') && userRole === 'SuperAdmin') {
-				isAuthorized = true;
-			} else if (
-				path.startsWith('/admin/main') &&
+			else if (
+				currentPath.startsWith('/admin/main') &&
 				(userRole === 'Coordinator' || userRole === 'Staff' || userRole === 'SuperAdmin')
-			) {
+			)
 				isAuthorized = true;
-			} else if (path === '/' || isLoginPage) {
-				isAuthorized = true;
-			}
+			else if (currentPath === '/' || isLoginPage) isAuthorized = true;
+			else if (currentPath.startsWith('/api')) isAuthorized = true;
+
+			const correctDashboard = getDashboardByRole(userRole);
 
 			if (!isAuthorized) {
-				const correctDashboard = getDashboardByRole(userRole);
+				console.warn(
+					`Unauthorized access attempt to ${currentPath} by role ${userRole}. Redirecting to ${correctDashboard}`
+				);
 				goto(correctDashboard);
-				return;
-			}
-
-			if (isLoginPage) {
-				const correctDashboard = getDashboardByRole(userRole);
-				goto(correctDashboard);
-				return;
-			}
-		} else {
-			localStorage.removeItem('sessionToken');
-			if (!isLoginPage) goto('/login');
-			return;
-		}
-
-		if ($userSession) {
-			return;
-		}
-		try {
-			const response = await fetch('/api/auth/verify', {
-				headers: { Authorization: `Bearer ${token}` }
-			});
-			if (!response.ok) {
-				if (response.status === 401) {
-					alert('Your session has expired. You will be logged out.');
+			} else if (isAuthorized && (isLoginPage || currentPath === '/')) {
+				if (currentPath !== correctDashboard) {
+					console.log(`User logged in, redirecting from ${currentPath} to ${correctDashboard}`);
+					goto(correctDashboard);
 				}
-				localStorage.removeItem('sessionToken');
-				if (!isLoginPage) goto('/login');
 			}
-		} catch (error) {
-			console.error('Session verification failed:', error);
+		} else if (!isLoginPage) {
+			console.log(`Session invalid, redirecting from ${currentPath} to /login`);
 			localStorage.removeItem('sessionToken');
-			if (!isLoginPage) goto('/login');
+			goto('/login');
 		}
-	}
+	});
 </script>
 
 <svelte:head>

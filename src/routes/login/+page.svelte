@@ -1,6 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { userSession } from '$lib/sessionStore.js';
+
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
@@ -18,7 +19,7 @@
 				const data = await response.json();
 				localStorage.setItem('sessionToken', data.token);
 
-				$userSession = { token: data.token, role: data.role };
+				$userSession = { token: data.token, role: data.role, username: data.username };
 
 				switch (data.role) {
 					case 'SuperAdmin':
@@ -39,25 +40,25 @@
 			} else {
 				const err = await response.json();
 				error = err.error || 'Login failed';
+				$userSession = null;
 			}
 		} catch (err) {
 			console.error('Login error:', err);
 			error = 'Network error';
+			$userSession = null;
 		}
 	}
 </script>
 
-<title>Kwenta</title>
+<title>Trainalytics Login</title>
 <div class="flex h-screen w-screen items-center justify-center bg-gray-100">
 	<div class="hidden flex-1 flex-col items-start justify-center md:flex">
 		<p
 			class="mb-5 bg-gradient-to-tr from-green-600 to-green-800 bg-clip-text pl-40 text-7xl font-bold text-transparent"
 		>
-			Kwenta
+			Trainalytics
 		</p>
-		<p class="pl-40 text-xl">
-			Stay on track of your daily business and personal finances. <br />See where your money goes.
-		</p>
+		<p class="pl-40 text-xl">Manage and track student internships effectively.</p>
 	</div>
 
 	<div class="w-full max-w-md flex-shrink-0 p-8">
@@ -70,8 +71,9 @@
 				<div>
 					<input
 						bind:value={email}
+						type="text"
 						class="w-full rounded-lg border border-gray-400 py-2 pl-4"
-						placeholder="Email"
+						placeholder="Username or Email"
 						required
 					/>
 				</div>

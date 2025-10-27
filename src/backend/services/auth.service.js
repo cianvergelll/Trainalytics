@@ -2,11 +2,11 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../../config/db.js';
 
 export async function verifyUserCredentials(email, password) {
-    let [rows] = await pool.query('SELECT * FROM im_admin_users WHERE Username = ? AND IsDeleted = 0', [email]);
+    let [rows] = await pool.query('SELECT ID, Username, Password, Role FROM im_admin_users WHERE Username = ? AND IsDeleted = 0', [email]);
     let userType = 'admin';
 
     if (rows.length === 0) {
-        [rows] = await pool.query('SELECT * FROM im_users WHERE Username = ? AND IsDeleted = 0', [email]);
+        [rows] = await pool.query('SELECT ID, Username, Password FROM im_users WHERE Username = ? AND IsDeleted = 0', [email]);
         userType = 'student';
     }
 
@@ -30,4 +30,27 @@ export async function createSession(userId, userType, token) {
 
 export async function terminateSession(token) {
     await pool.query('DELETE FROM im_sessions WHERE session_token = ?', [token]);
+}
+
+export async function getUserDetailsById(userId, userType) {
+    try {
+        let query;
+        if (userType === 'admin') {
+            query = 'SELECT ID, Username, Role FROM im_admin_users WHERE ID = ? AND IsDeleted = 0';
+        } else if (userType === 'student') {
+            query = 'SELECT ID, Username FROM im_users WHERE ID = ? AND IsDeleted = 0';
+        } else {
+            return null;
+        }
+
+        const [rows] = await pool.query(query, [userId]);
+
+        if (rows.length === 0) {
+            return null;
+        }
+        return { ...rows[0], userType: userType };
+    } catch (error) {
+        console.error("Error fetching user details by ID:", error);
+        throw error;
+    }
 }
