@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
+	import FilterModal from '$lib/components/FilterModal.svelte';
 
 	let students = $state([]);
 	let currentPage = $state(1);
@@ -10,8 +11,25 @@
 	let debounceTimer;
 	const limit = 10;
 
-	async function fetchStudents(page, search = '') {
-		const cacheKey = `student_page_${page}_search_${search}`;
+	let showFilterModal = $state(false);
+	let filterOptions = $state({ companies: [], sections: [] });
+	let selectedFilters = $state({
+		status: [],
+		hours: [],
+		companies: [],
+		sections: []
+	});
+
+	async function fetchStudents(page, search = '', filters = {}) {
+		const params = new URLSearchParams({ page, limit, search: search });
+		Object.entries(filters).forEach(([key, values]) => {
+			if (values && values.length > 0) {
+				values.forEach((value) => params.append(key, value));
+			}
+		});
+		const queryString = params.toString();
+
+		const cacheKey = `students?${queryString}`;
 		const cachedData = sessionStorage.getItem(cacheKey);
 
 		if (cachedData) {
@@ -24,12 +42,9 @@
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch(
-				`/api/students?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`,
-				{
-					headers: { Authorization: `Bearer ${token}` }
-				}
-			);
+			const res = await fetch(`/api/students?${queryString}`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
 
 			if (res.status === 401) {
 				sessionStorage.clear();
@@ -50,40 +65,81 @@
 		}
 	}
 
+	async function getFilterOptions() {
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch('/api/filters', { headers: { Authorization: `Bearer ${token}` } });
+			if (res.ok) {
+				const options = await res.json();
+				filterOptions.companies = options.companies;
+				filterOptions.sections = options.sections;
+				selectedFilters.companies = [...options.companies];
+				selectedFilters.sections = [...options.sections];
+				selectedFilters.status = ['On-going', 'Completed', 'None'];
+				selectedFilters.hours = [600, 480, 300];
+			}
+		} catch (e) {
+			console.error('Failed to fetch filter options', e);
+		}
+	}
+
+	function applyFilters() {
+		sessionStorage.clear();
+		fetchStudents(1, searchTerm, selectedFilters);
+		showFilterModal = false;
+	}
+
+	function clearFilters() {
+		selectedFilters = {
+			status: [],
+			hours: [],
+			companies: [],
+			sections: []
+		};
+	}
+
+	onMount(() => {
+		getFilterOptions().then(() => {
+			fetchStudents(1, searchTerm, selectedFilters);
+		});
+	});
+
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			fetchStudents(1, searchTerm);
+			sessionStorage.clear();
+			fetchStudents(1, searchTerm, selectedFilters);
 		}, 300);
 	}
 
 	function changePage(newPage) {
 		if (newPage < 1 || newPage > totalPages) return;
-		fetchStudents(newPage, searchTerm);
+		fetchStudents(newPage, searchTerm, selectedFilters);
 	}
-
-	onMount(() => {
-		fetchStudents(1, '');
-	});
 
 	async function handleLogout() {
 		sessionStorage.clear();
 		const token = localStorage.getItem('sessionToken');
 		if (token) {
-			try {
-				await fetch('/api/auth/logout', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ token })
-				});
-			} catch (err) {
-				console.error('Server logout failed:', err);
-			}
+			localStorage.removeItem('sessionToken');
+			await fetch('/api/auth/logout', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ token })
+			});
 		}
-		localStorage.removeItem('sessionToken');
 		goto('/login');
 	}
 </script>
+
+<FilterModal
+	show={showFilterModal}
+	options={filterOptions}
+	bind:selected={selectedFilters}
+	on:close={() => (showFilterModal = false)}
+	on:clear={clearFilters}
+	on:apply={applyFilters}
+/>
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
 	<div class="h-full w-1/5 flex-shrink-0">
@@ -118,6 +174,7 @@
 						</div>
 					</div>
 					<button
+						onclick={() => (showFilterModal = true)}
 						class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
 					>
 						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
@@ -199,57 +256,37 @@
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
 									>{student.CompanyName}</td
 								>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
-									><div class="flex items-center gap-3">
-										<button
-											class="text-gray-500 hover:text-blue-600"
-											aria-label="View student details"
-										>
-											<svg
-												class="h-5 w-5"
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 20 20"
-												fill="currentColor"
-											>
-												<path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-												<path
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
+									<div class="flex items-center gap-3">
+										<button class="text-gray-500 hover:text-blue-600" aria-label="View details">
+											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+												><path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" /><path
 													fill-rule="evenodd"
-													d="M.664 10.59a1.651 1.651 0 010-1.18l.879-1.148a1.651 1.651 0 011.087-.582l1.649-.033a1.651 1.651 0 011.53.86l.635 1.27a1.651 1.651 0 001.53.861l1.65-.033a1.651 1.651 0 001.086-.582l.88-1.148a1.651 1.651 0 000-1.18l-.88-1.147a1.651 1.651 0 00-1.086-.583l-1.65.033a1.651 1.651 0 00-1.53-.86l-.635-1.27a1.651 1.651 0 01-1.53-.86L6.22.842a1.651 1.651 0 01-1.087-.582L4.254.113a1.651 1.651 0 010 1.181l.88 1.147c.224.292.36.66.36 1.052v1.274a1.651 1.651 0 01-.36 1.052l-.88 1.148a1.651 1.651 0 01-1.086.582l-1.65-.033a1.651 1.651 0 01-1.53-.86l-.635-1.27a1.651 1.651 0 00-1.53-.86L.842 6.22a1.651 1.651 0 00-1.087.582L-.394 7.948a1.651 1.651 0 000 1.181l.394 1.147c.224.292.36.66.36 1.052v1.274a1.651 1.651 0 00.36 1.052l.88 1.148zM10 15a5 5 0 100-10 5 5 0 000 10z"
+													d="M.664 10.59a1.651 1.651 0 010-1.18l.879-1.148a1.651 1.651 0 011.087-.582l1.649-.033a1.651 1.651 0 011.53.86l.635 1.27a1.651 1.651 0 001.53.861l1.65-.033a1.651 1.651 0 001.086-.582l.88-1.148a1.651 1.651 0 000-1.18l-.88-1.147a1.651 1.651 0 00-1.086-.583l-1.65.033a1.651 1.651 0 00-1.53-.86l-.635-1.27a1.651 1.651 0 01-1.53-.86L6.22.842a1.651 1.651 0 01-1.087-.582L4.254.113a1.651 1.651 0 010 1.181l.88 1.147c.224.292.36.66.36 1.052v1.274c.36.36.36.36.36.36v-1.274a1.651 1.651 0 01-.36-1.052l-.88-1.148a1.651 1.651 0 01-1.086-.582l-1.65-.033a1.651 1.651 0 01-1.53-.86l-.635-1.27a1.651 1.651 0 00-1.53-.86L.842 6.22a1.651 1.651 0 00-1.087.582L-.394 7.948a1.651 1.651 0 000 1.181l.394 1.147c.224.292.36.66.36 1.052v1.274a1.651 1.651 0 00.36 1.052l.88 1.148zM10 15a5 5 0 100-10 5 5 0 000 10z"
 													clip-rule="evenodd"
-												/>
-											</svg>
-										</button>
-										<button class="text-gray-500 hover:text-green-600" aria-label="Edit student">
-											<svg
-												class="h-5 w-5"
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 20 20"
-												fill="currentColor"
+												/></svg
 											>
-												<path
+										</button>
+										<button class="text-gray-500 hover:text-green-600" aria-label="Edit">
+											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+												><path
 													d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"
-												/>
-												<path
+												/><path
 													d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"
-												/>
-											</svg>
-										</button>
-										<button class="text-gray-500 hover:text-red-600" aria-label="Delete student">
-											<svg
-												class="h-5 w-5"
-												xmlns="http://www.w3.org/2000/svg"
-												viewBox="0 0 20 20"
-												fill="currentColor"
+												/></svg
 											>
-												<path
-													fill-rule="evenodd"
-													d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-													clip-rule="evenodd"
-												/>
-											</svg>
 										</button>
-									</div></td
-								>
+										<button class="text-gray-500 hover:text-red-600" aria-label="Delete">
+											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+												><path
+													fill-rule="evenodd"
+													d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25-.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+													clip-rule="evenodd"
+												/></svg
+											>
+										</button>
+									</div>
+								</td>
 							</tr>
 						{/each}
 					</tbody>
