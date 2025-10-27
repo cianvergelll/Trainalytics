@@ -48,17 +48,17 @@
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
-			<a href="/history">Journals</a>
+			<a href="/admin/main/journals">Journals</a>
 		</li>
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
-			<a href="/notifications">Attendance</a>
+			<a href="/admin/main/attendance">Attendance</a>
 		</li>
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
-			<a href="/notifications">Complaints</a>
+			<a href="/admin/main/complaints">Complaints</a>
 		</li>
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"

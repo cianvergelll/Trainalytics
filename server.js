@@ -8,6 +8,9 @@ import schoolsRoutes from './src/backend/routes/schools.routes.js';
 import studentsRoutes from './src/backend/routes/students.routes.js';
 import filtersRoutes from './src/backend/routes/filters.routes.js';
 import announcementsRoutes from './src/backend/routes/announcements.routes.js';
+import journalsRoutes from './src/backend/routes/journals.routes.js';
+import attendancesRoutes from './src/backend/routes/attendances.routes.js';
+import complaintsRoutes from './src/backend/routes/complaints.routes.js';
 
 dotenv.config();
 const app = express();
@@ -20,6 +23,9 @@ app.use('/api/schools', schoolsRoutes);
 app.use('/api/students', studentsRoutes);
 app.use('/api/filters', filtersRoutes);
 app.use('/api/announcements', announcementsRoutes);
+app.use('/api/journals', journalsRoutes);
+app.use('/api/attendances', attendancesRoutes);
+app.use('/api/complaints', complaintsRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
