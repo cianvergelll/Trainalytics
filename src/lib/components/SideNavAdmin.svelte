@@ -43,7 +43,7 @@
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
-			<a href="/saving-goals">Announcements</a>
+			<a href="/admin/main/announcements">Announcements</a>
 		</li>
 		<li
 			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
