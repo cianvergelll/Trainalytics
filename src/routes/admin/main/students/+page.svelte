@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
-	import FilterModal from '$lib/components/FilterModal.svelte';
+	import FilterDropdownPanel from '$lib/components/FilterDropdownPanel.svelte';
+	import AddStudentModal from '$lib/components/AddStudentModal.svelte';
 
 	let students = $state([]);
 	let currentPage = $state(1);
@@ -11,7 +12,11 @@
 	let debounceTimer;
 	const limit = 10;
 
-	let showFilterModal = $state(false);
+	let showFilterDropdown = $state(false);
+	let filterButtonElement = $state();
+
+	let showAddStudentModal = $state(false);
+
 	let filterOptions = $state({ companies: [], sections: [] });
 	let selectedFilters = $state({
 		status: [],
@@ -19,6 +24,12 @@
 		companies: [],
 		sections: []
 	});
+
+	function handleWindowClick(event) {
+		if (showFilterDropdown && filterButtonElement && !filterButtonElement.contains(event.target)) {
+			showFilterDropdown = false;
+		}
+	}
 
 	async function fetchStudents(page, search = '', filters = {}) {
 		const params = new URLSearchParams({ page, limit, search: search });
@@ -28,7 +39,6 @@
 			}
 		});
 		const queryString = params.toString();
-
 		const cacheKey = `students?${queryString}`;
 		const cachedData = sessionStorage.getItem(cacheKey);
 
@@ -45,7 +55,6 @@
 			const res = await fetch(`/api/students?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
-
 			if (res.status === 401) {
 				sessionStorage.clear();
 				localStorage.removeItem('sessionToken');
@@ -73,10 +82,6 @@
 				const options = await res.json();
 				filterOptions.companies = options.companies;
 				filterOptions.sections = options.sections;
-				selectedFilters.companies = [...options.companies];
-				selectedFilters.sections = [...options.sections];
-				selectedFilters.status = ['On-going', 'Completed', 'None'];
-				selectedFilters.hours = [600, 480, 300];
 			}
 		} catch (e) {
 			console.error('Failed to fetch filter options', e);
@@ -86,7 +91,7 @@
 	function applyFilters() {
 		sessionStorage.clear();
 		fetchStudents(1, searchTerm, selectedFilters);
-		showFilterModal = false;
+		showFilterDropdown = false;
 	}
 
 	function clearFilters() {
@@ -98,8 +103,21 @@
 		};
 	}
 
+	async function handleAddStudent(event) {
+		const newStudentData = event.detail;
+		console.log('New student to add:', newStudentData);
+
+		showAddStudentModal = false;
+		sessionStorage.clear();
+		fetchStudents(1, searchTerm, selectedFilters);
+	}
+
 	onMount(() => {
 		getFilterOptions().then(() => {
+			selectedFilters.companies = [...filterOptions.companies];
+			selectedFilters.sections = [...filterOptions.sections];
+			selectedFilters.status = ['On-going', 'Completed', 'None'];
+			selectedFilters.hours = [600, 480, 300];
 			fetchStudents(1, searchTerm, selectedFilters);
 		});
 	});
@@ -132,13 +150,13 @@
 	}
 </script>
 
-<FilterModal
-	show={showFilterModal}
-	options={filterOptions}
-	bind:selected={selectedFilters}
-	on:close={() => (showFilterModal = false)}
-	on:clear={clearFilters}
-	on:apply={applyFilters}
+<svelte:window onclick={handleWindowClick} />
+
+<AddStudentModal
+	show={showAddStudentModal}
+	sections={filterOptions.sections}
+	on:close={() => (showAddStudentModal = false)}
+	on:add={handleAddStudent}
 />
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
@@ -173,17 +191,30 @@
 							>
 						</div>
 					</div>
-					<button
-						onclick={() => (showFilterModal = true)}
-						class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
-					>
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
-							><path
-								d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
-							/></svg
+
+					<div class="relative" bind:this={filterButtonElement}>
+						<button
+							onclick={() => (showFilterDropdown = !showFilterDropdown)}
+							class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
 						>
-						Filter By
-					</button>
+							<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
+								><path
+									d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
+								/></svg
+							>
+							Filter By
+						</button>
+
+						{#if showFilterDropdown}
+							<FilterDropdownPanel
+								options={filterOptions}
+								bind:selected={selectedFilters}
+								on:close={() => (showFilterDropdown = false)}
+								on:clear={clearFilters}
+								on:apply={applyFilters}
+							/>
+						{/if}
+					</div>
 				</div>
 				<div class="flex items-center gap-4">
 					<button
@@ -191,6 +222,7 @@
 						>Archived Student's</button
 					>
 					<button
+						onclick={() => (showAddStudentModal = true)}
 						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
 					>
 						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
