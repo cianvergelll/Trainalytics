@@ -347,7 +347,7 @@
 					View Students
 				</a>
 				<a
-					href="/admin/main/attendances"
+					href="/admin/main/attendance"
 					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow hover:bg-green-600"
 				>
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"

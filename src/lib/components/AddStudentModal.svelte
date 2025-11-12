@@ -1,7 +1,7 @@
 <script>
 	import { createEventDispatcher, onMount } from 'svelte';
 
-	let { show = false, sections = [], schools = [] } = $props();
+	let { show = false, sections = [], schools = [], error = '' } = $props();
 
 	let student = $state({
 		studentId: '',
@@ -222,6 +222,12 @@
 						</div>
 					</div>
 				</div>
+
+				{#if error}
+					<p class="mt-4 w-full rounded bg-red-100 p-3 text-center text-sm text-red-700">
+						{error}
+					</p>
+				{/if}
 
 				<div class="mt-8 flex justify-end gap-4">
 					<button
