@@ -9,6 +9,8 @@
 
 	let { children } = $props();
 
+	let isChecking = $state(true);
+
 	function getDashboardByRole(role) {
 		switch (role) {
 			case 'SuperAdmin':
@@ -26,10 +28,13 @@
 	$effect(() => {
 		if (!browser) return;
 
+		isChecking = true;
+
 		const currentPath = $page.url.pathname;
 		const isLoginPage = currentPath === '/login';
 		const token = localStorage.getItem('sessionToken');
 		let session = $userSession;
+
 		if (!token) {
 			if (session) {
 				console.log('Token missing, clearing session store.');
@@ -39,10 +44,13 @@
 			if (!isLoginPage) {
 				console.log(`No token, redirecting from ${currentPath} to /login`);
 				goto('/login');
+			} else {
+				isChecking = false;
 			}
 			return;
 		}
 
+		// 2. Handle Token Validation
 		if (token && !session) {
 			try {
 				const decoded = jwtDecode(token);
@@ -65,6 +73,8 @@
 				if (!isLoginPage) {
 					console.log(`Invalid token, redirecting from ${currentPath} to /login`);
 					goto('/login');
+				} else {
+					isChecking = false;
 				}
 				return;
 			}
@@ -96,12 +106,20 @@
 				if (currentPath !== correctDashboard) {
 					console.log(`User logged in, redirecting from ${currentPath} to ${correctDashboard}`);
 					goto(correctDashboard);
+				} else {
+					// User is already on the correct dashboard
+					isChecking = false;
 				}
+			} else {
+				// User is authorized and on a valid page
+				isChecking = false;
 			}
 		} else if (!isLoginPage) {
 			console.log(`Session invalid, redirecting from ${currentPath} to /login`);
 			localStorage.removeItem('sessionToken');
 			goto('/login');
+		} else {
+			isChecking = false;
 		}
 	});
 </script>
@@ -111,5 +129,16 @@
 </svelte:head>
 
 <main class="min-h-screen bg-gray-50">
-	{@render children?.()}
+	{#if isChecking}
+		<div class="flex h-screen w-full items-center justify-center bg-white">
+			<div class="flex flex-col items-center gap-4">
+				<div
+					class="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-green-500"
+				></div>
+				<p class="animate-pulse font-medium text-gray-500">Verifying access...</p>
+			</div>
+		</div>
+	{:else}
+		{@render children?.()}
+	{/if}
 </main>
