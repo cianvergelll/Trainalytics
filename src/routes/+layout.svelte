@@ -50,7 +50,6 @@
 			return;
 		}
 
-		// 2. Handle Token Validation
 		if (token && !session) {
 			try {
 				const decoded = jwtDecode(token);
@@ -107,11 +106,9 @@
 					console.log(`User logged in, redirecting from ${currentPath} to ${correctDashboard}`);
 					goto(correctDashboard);
 				} else {
-					// User is already on the correct dashboard
 					isChecking = false;
 				}
 			} else {
-				// User is authorized and on a valid page
 				isChecking = false;
 			}
 		} else if (!isLoginPage) {

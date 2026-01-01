@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 
 export async function getStudentsPaginated(page = 1, limit = 10, searchTerm = '', filters = {}) {
     const offset = (page - 1) * limit;
-
     let baseQuery = 'FROM im_cec_students WHERE 1=1';
     const params = [];
 
@@ -34,9 +33,7 @@ export async function getStudentsPaginated(page = 1, limit = 10, searchTerm = ''
     }
 
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
-
     const [students] = await pool.query(`SELECT StudentID, StudentName, Section, CompanyName, TargetHours, IsCompleted, IsActive ${baseQuery} ORDER BY StudentName ASC LIMIT ? OFFSET ?`, [...params, limit, offset]);
-
     return { students, total };
 }
 
@@ -62,8 +59,8 @@ export async function createStudent(studentData) {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const [userResult] = await conn.query(
-            'INSERT INTO im_users (Username, Password, IsDeleted) VALUES (?, ?, 0)',
-            [username, hashedPassword]
+            'INSERT INTO im_users (Username, Password, IsDeleted, Extra1) VALUES (?, ?, 0, ?)',
+            [username, hashedPassword, studentId]
         );
 
         const studentName = `${firstName} ${lastName}`;
@@ -86,6 +83,7 @@ export async function createStudent(studentData) {
 
         await conn.commit();
         return { success: true, userId: userResult.insertId, studentId: studentResult.insertId };
+
     } catch (err) {
         await conn.rollback();
         throw err;
@@ -93,4 +91,3 @@ export async function createStudent(studentData) {
         conn.release();
     }
 }
-
