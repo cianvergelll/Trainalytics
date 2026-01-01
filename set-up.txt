@@ -1,0 +1,20 @@
+**Database**
+1. Download XAMPP
+2. Create a database im_system
+3. Import .sql file in the im_system
+
+**Project Directory**
+1. Clone Repository in Github (Trainalytics)
+
+**Running the Code**
+1. Open 3 terminals in VSCODE.
+1.a use the first terminal and run node server.js
+1.b use the second terminal and run npm run dev
+1.c the third terminal will serve as the console for git push, pull, and hashing
+
+**Creating a New Account with Hashing**
+1. Open the PhpmyAdmin
+2. Open Code
+3. use the third terminal and run node hash-password.js your_password (ex. node hash-password abc123)
+4. Open the Database and go to im_admin_users table and insert a new account (Admin) insert the username, role (Coordinator), password will be the long hashed result in the terminal in No. 3
+5. Open the Database and go to im_users table and insert a new account (Student) insert the username, password will be the long hashed result in the terminal in No. 3.
