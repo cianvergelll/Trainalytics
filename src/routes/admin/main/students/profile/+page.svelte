@@ -1,6 +1,6 @@
 <script>
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
-
+	import { goto } from '$app/navigation';
 	const student = {
 		id: '1234567',
 		name: 'Diana Barleta',
@@ -40,10 +40,15 @@
 		{ name: 'Certificate of Completion', type: 'PDF', status: 'uploaded' },
 		{ name: 'Medical Certificate', type: 'PDF', status: 'missing' }
 	];
+
+	// Function to handle back navigation
+	function handleBack() {
+		window.history.back();
+	}
 </script>
 
-<div class="flex h-screen w-full overflow-hidden bg-gray-50 font-sans text-gray-800">
-	<div class="h-full w-1/5 flex-shrink-0 border-r border-gray-200 bg-white">
+<div class="flex h-screen gap-4 bg-gray-50 p-4">
+	<div class="h-full w-1/5 flex-shrink-0">
 		<SideNavAdmin />
 	</div>
 
@@ -60,6 +65,27 @@
 
 					<div class="flex flex-wrap items-center gap-3">
 						<button
+							onclick={() => goto('/admin/main/students/')}
+							class="flex h-12 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 shadow-sm transition hover:bg-gray-100 active:scale-95"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="2.5"
+								stroke="currentColor"
+								class="h-4 w-4 text-gray-600"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+								/>
+							</svg>
+							<span class="text-sm font-bold tracking-wide text-neutral-600 uppercase">Back</span>
+						</button>
+
+						<button
 							aria-label="Edit Student Profile"
 							class="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-green-600 shadow-sm ring-1 ring-green-200 transition hover:bg-green-500 hover:text-white"
 						>
@@ -74,6 +100,7 @@
 								/>
 							</svg>
 						</button>
+
 						<button
 							class="flex h-12 items-center justify-center rounded-md border border-green-500 bg-white px-6 shadow-md transition hover:bg-gray-50"
 						>
@@ -81,6 +108,7 @@
 								>View Journal</span
 							>
 						</button>
+
 						<button
 							class="flex h-12 items-center justify-center rounded-md border border-green-600 bg-green-500 px-6 shadow-md transition hover:bg-green-600"
 						>
