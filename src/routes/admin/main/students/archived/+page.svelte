@@ -2,8 +2,6 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
-	import FilterDropdownPanel from '$lib/components/FilterDropdownPanel.svelte';
-	import AddStudentModal from '$lib/components/AddStudentModal.svelte';
 	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
 
 	let students = $state([]);
@@ -13,40 +11,21 @@
 	let debounceTimer;
 	const limit = 10;
 
-	let showFilterDropdown = $state(false);
-	let filterButtonElement = $state();
-
-	let showAddStudentModal = $state(false);
-	let addStudentError = $state('');
+	let error = $state('');
 	let successMessage = $state('');
 
-	let showArchiveModal = $state(false);
-	let studentToArchiveId = $state(null);
+	let showRestoreModal = $state(false);
+	let studentToRestoreId = $state(null);
 
-	let filterOptions = $state({ companies: [], sections: [] });
-	let selectedFilters = $state({
-		status: [],
-		hours: [],
-		companies: [],
-		sections: []
-	});
-	let schools = $state([]);
-
-	function handleWindowClick(event) {
-		if (showFilterDropdown && filterButtonElement && !filterButtonElement.contains(event.target)) {
-			showFilterDropdown = false;
-		}
-	}
-
-	async function fetchStudents(page, search = '', filters = {}) {
-		const params = new URLSearchParams({ page, limit, search: search });
-		Object.entries(filters).forEach(([key, values]) => {
-			if (values && values.length > 0) {
-				values.forEach((value) => params.append(key, value));
-			}
+	async function fetchArchivedStudents(page, search = '') {
+		const params = new URLSearchParams({
+			page,
+			limit,
+			search: search,
+			archived: 'true'
 		});
 		const queryString = params.toString();
-		const cacheKey = `students?${queryString}`;
+		const cacheKey = `students_archived?${queryString}`;
 		const cachedData = sessionStorage.getItem(cacheKey);
 
 		if (cachedData) {
@@ -79,172 +58,72 @@
 			}
 		} catch (e) {
 			console.error('An error occurred:', e);
+			error = 'Failed to load archived students.';
 		}
 	}
 
-	async function getFilterOptions() {
-		try {
-			const token = localStorage.getItem('sessionToken');
-			const res = await fetch('/api/filters', { headers: { Authorization: `Bearer ${token}` } });
-			if (res.ok) {
-				const options = await res.json();
-				filterOptions.companies = options.companies;
-				filterOptions.sections = options.sections;
-			}
-		} catch (e) {
-			console.error('Failed to fetch filter options', e);
-		}
+	function handleRestore(studentId) {
+		studentToRestoreId = studentId;
+		showRestoreModal = true;
 	}
 
-	async function fetchSchools() {
-		try {
-			const token = localStorage.getItem('sessionToken');
-			const res = await fetch('/api/schools', {
-				headers: {
-					Authorization: `Bearer ${token}`
-				}
-			});
-
-			if (res.status === 401) {
-				localStorage.removeItem('sessionToken');
-				goto('/login');
-				return;
-			}
-			if (res.ok) {
-				schools = await res.json();
-			}
-		} catch (e) {
-			console.error('Failed to fetch schools:', e);
-		}
-	}
-
-	function applyFilters() {
-		sessionStorage.clear();
-		fetchStudents(1, searchTerm, selectedFilters);
-		showFilterDropdown = false;
-	}
-
-	function clearFilters() {
-		selectedFilters = {
-			status: [],
-			hours: [],
-			companies: [],
-			sections: []
-		};
-	}
-
-	async function handleAddStudent(event) {
-		const newStudentData = event.detail;
-		addStudentError = '';
+	async function confirmRestore() {
+		if (!studentToRestoreId) return;
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch('/api/students', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify(newStudentData)
-			});
-
-			if (res.ok) {
-				console.log('Student added successfully');
-				showAddStudentModal = false;
-				sessionStorage.clear();
-				fetchStudents(currentPage, searchTerm, selectedFilters);
-			} else {
-				const err = await res.json();
-				console.error('Failed to add student:', err);
-				addStudentError = err.error || 'An unknown error occurred.';
-			}
-		} catch (e) {
-			console.error('Error adding student:', e);
-			addStudentError = 'A network error occurred. Please try again.';
-		}
-	}
-
-	function handleArchive(studentId) {
-		studentToArchiveId = studentId;
-		showArchiveModal = true;
-	}
-
-	async function confirmArchive() {
-		if (!studentToArchiveId) return;
-
-		try {
-			const token = localStorage.getItem('sessionToken');
-			const res = await fetch(`/api/students/${studentToArchiveId}/archive`, {
+			const res = await fetch(`/api/students/${studentToRestoreId}/archive`, {
 				method: 'PATCH',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`
 				},
-				body: JSON.stringify({ archived: true })
+				body: JSON.stringify({ archived: false })
 			});
 
 			if (res.ok) {
-				successMessage = 'Student archived successfully.';
+				successMessage = 'Student restored successfully.';
 				setTimeout(() => (successMessage = ''), 3000);
 				sessionStorage.clear();
-				fetchStudents(currentPage, searchTerm, selectedFilters);
+				fetchArchivedStudents(currentPage, searchTerm);
 			} else {
 				const err = await res.json();
-				console.error('Failed to archive student:', err);
-				addStudentError = err.error || 'Failed to archive student.';
+				error = err.error || 'Failed to restore student.';
 			}
 		} catch (e) {
-			console.error('Error archiving student:', e);
-			addStudentError = 'Network error while archiving.';
+			console.error('Error restoring student:', e);
+			error = 'Network error while restoring student.';
 		} finally {
-			studentToArchiveId = null;
+			studentToRestoreId = null;
 		}
 	}
 
 	onMount(() => {
-		Promise.all([getFilterOptions(), fetchSchools()]).then(() => {
-			selectedFilters.companies = [...filterOptions.companies];
-			selectedFilters.sections = [...filterOptions.sections];
-
-			selectedFilters.status = ['On-going', 'Completed', 'Processing', 'None'];
-			selectedFilters.hours = [600, 480, 300, 0];
-
-			fetchStudents(1, searchTerm, selectedFilters);
-		});
+		fetchArchivedStudents(1, searchTerm);
 	});
 
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
 			sessionStorage.clear();
-			fetchStudents(1, searchTerm, selectedFilters);
+			fetchArchivedStudents(1, searchTerm);
 		}, 300);
 	}
 
 	function changePage(newPage) {
 		if (newPage < 1 || newPage > totalPages) return;
-		fetchStudents(newPage, searchTerm, selectedFilters);
+		fetchArchivedStudents(newPage, searchTerm);
 	}
 </script>
 
-<svelte:window onclick={handleWindowClick} />
-
-<AddStudentModal
-	show={showAddStudentModal}
-	sections={filterOptions.sections}
-	{schools}
-	on:close={() => (showAddStudentModal = false)}
-	on:add={handleAddStudent}
-/>
-
 <ConfirmationModal
-	show={showArchiveModal}
-	title="Archive Student"
-	message="Are you sure you want to archive this student? They will be moved to the archived list."
-	confirmText="Archive"
-	confirmColor="red"
-	on:close={() => (showArchiveModal = false)}
-	on:confirm={confirmArchive}
+	show={showRestoreModal}
+	title="Restore Student"
+	message="Are you sure you want to restore this student? They will be moved back to the main student list."
+	confirmText="Restore"
+	confirmColor="green"
+	on:close={() => (showRestoreModal = false)}
+	on:confirm={confirmRestore}
 />
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
@@ -254,10 +133,13 @@
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
 		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-800">Student's Master List</h1>
-			<p class="text-sm text-gray-500">Pages / Students / Student's Master List</p>
+			<h1 class="text-3xl font-bold text-gray-800">Archived Students</h1>
+			<p class="text-sm text-gray-500">Pages / Students / Archived Students</p>
 		</div>
 
+		{#if error}
+			<p class="mb-4 w-full rounded bg-red-100 p-2 text-center text-sm text-red-700">{error}</p>
+		{/if}
 		{#if successMessage}
 			<p class="mb-4 w-full rounded bg-green-100 p-2 text-center text-sm text-green-700">
 				{successMessage}
@@ -285,47 +167,13 @@
 							</svg>
 						</div>
 					</div>
-
-					<div class="relative" bind:this={filterButtonElement}>
-						<button
-							onclick={() => (showFilterDropdown = !showFilterDropdown)}
-							class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
-						>
-							<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-								<path
-									d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
-								/>
-							</svg>
-							Filter By
-						</button>
-
-						{#if showFilterDropdown}
-							<FilterDropdownPanel
-								options={filterOptions}
-								bind:selected={selectedFilters}
-								on:close={() => (showFilterDropdown = false)}
-								on:clear={clearFilters}
-								on:apply={applyFilters}
-							/>
-						{/if}
-					</div>
 				</div>
 				<div class="flex items-center gap-4">
 					<button
-						onclick={() => goto('/admin/main/students/archived')}
+						onclick={() => goto('/admin/main/students')}
 						class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 font-medium text-gray-700 hover:bg-gray-200"
-						>Archived Students</button
 					>
-					<button
-						onclick={() => (showAddStudentModal = true)}
-						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
-					>
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
-							/>
-						</svg>
-						Add Student
+						Back to Master List
 					</button>
 				</div>
 			</div>
@@ -350,26 +198,9 @@
 									>{student.StudentID}</td
 								>
 								<td class="px-4 py-3 text-sm whitespace-nowrap">
-									{#if student.status === 'Completed'}
-										<span
-											class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800"
-											>{student.status}</span
-										>
-									{:else if student.status === 'On-going'}
-										<span
-											class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800"
-											>{student.status}</span
-										>
-									{:else if student.status === 'Processing'}
-										<span
-											class="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800"
-											>{student.status}</span
-										>
-									{:else}
-										<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
-											>{student.status}</span
-										>
-									{/if}
+									<span class="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+										>Archived</span
+									>
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-3">
@@ -475,10 +306,9 @@
 										</button>
 
 										<button
-											onclick={() => handleArchive(student.StudentID)}
-											class="text-red-600 transition-colors duration-200 hover:text-red-800"
-											aria-label="Archive Student"
-											title="Archive Student"
+											onclick={() => handleRestore(student.StudentID)}
+											class="flex items-center gap-1 text-green-600 transition-colors duration-200 hover:text-green-800"
+											title="Restore Student"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
@@ -491,7 +321,7 @@
 												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
-													d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+													d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
 												/>
 											</svg>
 										</button>

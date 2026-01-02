@@ -6,28 +6,48 @@ export async function getStudents(req, res) {
         const limit = parseInt(req.query.limit || '10', 10);
         const searchTerm = req.query.search || '';
 
+        const filters = {
+            archived: req.query.archived || 'false',
+            status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status : [req.query.status]) : [],
+            hours: req.query.hours ? (Array.isArray(req.query.hours) ? req.query.hours : [req.query.hours]) : [],
+            companies: req.query.companies ? (Array.isArray(req.query.companies) ? req.query.companies : [req.query.companies]) : [],
+            sections: req.query.sections ? (Array.isArray(req.query.sections) ? req.query.sections : [req.query.sections]) : []
+        };
+
         const { students: studentsRaw, total } = await studentsService.getStudentsPaginated(
             page,
             limit,
-            searchTerm
+            searchTerm,
+            filters
         );
 
         const students = studentsRaw.map((student) => {
             let status = 'None';
+            let targetHoursDisplay = '';
+            let companyDisplay = student.CompanyName || '-';
+
             if (student.IsCompleted) {
                 status = 'Completed';
+                targetHoursDisplay = `${student.TargetHours} Hours`;
+            } else if (parseFloat(student.TargetHours) === 0) {
+                status = 'Processing';
+                targetHoursDisplay = '-';
             } else if (student.IsActive) {
                 status = 'On-going';
+                targetHoursDisplay = `${student.TargetHours} Hours`;
+            } else {
+                targetHoursDisplay = student.TargetHours > 0 ? `${student.TargetHours} Hours` : '-';
             }
 
             return {
                 StudentID: student.StudentID,
                 StudentName: student.StudentName,
-                CompanyName: student.CompanyName || 'N/A',
-                TargetHours: `${student.TargetHours} Hours`,
+                CompanyName: companyDisplay,
+                TargetHours: targetHoursDisplay,
                 status: status,
                 avatar: 'https://i.pravatar.cc/40?u=' + student.StudentID,
-                section: student.Section || 'N/A'
+                section: student.Section || 'N/A',
+                isArchived: student.IsArchived
             };
         });
 
@@ -57,6 +77,7 @@ export async function addStudent(req, res) {
         schoolId,
         classSection
     } = req.body;
+
     if (
         !studentId ||
         !firstName ||
@@ -87,3 +108,24 @@ export async function addStudent(req, res) {
     }
 }
 
+export async function toggleArchiveStudent(req, res) {
+    try {
+        const { id } = req.params;
+        const { archived } = req.body;
+
+        if (typeof archived !== 'boolean') {
+            return res.status(400).json({ error: 'Invalid status provided.' });
+        }
+
+        const success = await studentsService.setStudentArchiveStatus(id, archived);
+
+        if (!success) {
+            return res.status(404).json({ error: 'Student not found.' });
+        }
+
+        res.json({ message: `Student ${archived ? 'archived' : 'restored'} successfully.` });
+    } catch (err) {
+        console.error('Failed to toggle archive status:', err);
+        res.status(500).json({ error: 'Server error updating archive status.' });
+    }
+}
