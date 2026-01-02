@@ -113,7 +113,7 @@
 							class="flex h-12 items-center justify-center rounded-md border border-green-600 bg-green-500 px-6 shadow-md transition hover:bg-green-600"
 						>
 							<span class="text-sm font-bold tracking-wide text-white uppercase"
-								>View Attendance Sheet</span
+								>View Attendance</span
 							>
 						</button>
 					</div>
