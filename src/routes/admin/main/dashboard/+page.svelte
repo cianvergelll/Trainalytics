@@ -7,12 +7,14 @@
 	import AddStudentModal from '$lib/components/AddStudentModal.svelte';
 	import Chart from 'chart.js/auto';
 
+	// Updated stats structure to include processing
 	let stats = $state({
 		totalStudents: 0,
 		totalCompanies: 0,
-		completionStats: { completed: 0, ongoing: 0 },
+		completionStats: { completed: 0, ongoing: 0, processing: 0 },
 		internshipStats: { withInternship: 0, noInternship: 0 }
 	});
+
 	let error = $state('');
 	let currentTime = $state(new Date());
 	let clockInterval;
@@ -25,7 +27,6 @@
 	let internshipChartCtx = $state();
 	let completionChartInstance = null;
 	let internshipChartInstance = null;
-
 	const adminUsername = $derived($userSession?.username || 'Admin');
 
 	async function fetchFilterOptions() {
@@ -73,21 +74,7 @@
 
 	async function fetchDashboardStats() {
 		error = '';
-		const cacheKey = 'dashboardStats';
-		const cachedData = sessionStorage.getItem(cacheKey);
-
-		if (cachedData) {
-			try {
-				const data = JSON.parse(cachedData);
-				stats = data;
-				updateCharts();
-				return;
-			} catch (e) {
-				console.error('Failed to parse cached stats:', e);
-				sessionStorage.removeItem(cacheKey);
-			}
-		}
-
+		// Note: removed caching here temporarily so you see live updates immediately
 		try {
 			const token = localStorage.getItem('sessionToken');
 			const res = await fetch('/api/dashboard/stats', {
@@ -104,7 +91,8 @@
 			if (res.ok) {
 				const data = await res.json();
 				stats = data;
-				sessionStorage.setItem(cacheKey, JSON.stringify(data));
+				// Update session storage if needed
+				sessionStorage.setItem('dashboardStats', JSON.stringify(data));
 				updateCharts();
 			} else {
 				const err = await res.json();
@@ -117,83 +105,63 @@
 		}
 	}
 
-	function createPieChart(ctx, label1, data1, label2, data2, color1, color2) {
-		if (!ctx) {
-			console.error('Chart context is invalid!');
-			return null;
-		}
-		try {
-			return new Chart(ctx, {
-				type: 'pie',
-				data: {
-					labels: [label1, label2],
-					datasets: [
-						{
-							label: 'Count',
-							data: [data1, data2],
-							backgroundColor: [color1, color2],
-							hoverOffset: 4
-						}
-					]
-				},
-				options: {
-					responsive: true,
-					maintainAspectRatio: false,
-					plugins: {
-						legend: {
-							display: false
-						}
-					}
-				}
-			});
-		} catch (e) {
-			console.error('Error creating chart:', e);
-			return null;
-		}
-	}
-
 	function updateCharts() {
 		if (!completionChartCtx || !internshipChartCtx) {
 			console.warn('Canvas context not ready for charts yet.');
 			return;
 		}
 
-		if (completionChartInstance) {
-			try {
-				completionChartInstance.destroy();
-			} catch (e) {
-				console.error('Error destroying completion chart:', e);
-			}
-			completionChartInstance = null;
-		}
-		if (internshipChartInstance) {
-			try {
-				internshipChartInstance.destroy();
-			} catch (e) {
-				console.error('Error destroying internship chart:', e);
-			}
-			internshipChartInstance = null;
-		}
+		// Destroy old charts
+		if (completionChartInstance) completionChartInstance.destroy();
+		if (internshipChartInstance) internshipChartInstance.destroy();
 
-		completionChartInstance = createPieChart(
-			completionChartCtx,
-			'Completed',
-			stats.completionStats.completed,
-			'On-going',
-			stats.completionStats.ongoing,
-			'#10B981',
-			'#FCD34D'
-		);
+		// 1. Completion Status Chart (Now with 3 Segments: Completed, Ongoing, Processing)
+		completionChartInstance = new Chart(completionChartCtx, {
+			type: 'pie',
+			data: {
+				labels: ['Completed', 'On-going', 'Processing'],
+				datasets: [
+					{
+						label: 'Count',
+						data: [
+							stats.completionStats.completed,
+							stats.completionStats.ongoing,
+							stats.completionStats.processing
+						],
+						// Colors: Green, Yellow, Blue
+						backgroundColor: ['#10B981', '#FCD34D', '#3B82F6'],
+						hoverOffset: 4
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: { legend: { display: false } }
+			}
+		});
 
-		internshipChartInstance = createPieChart(
-			internshipChartCtx,
-			'With Internship',
-			stats.internshipStats.withInternship,
-			'No Internship',
-			stats.internshipStats.noInternship,
-			'#10B981',
-			'#EF4444'
-		);
+		// 2. Internship Status Chart (With Internship vs No Internship)
+		internshipChartInstance = new Chart(internshipChartCtx, {
+			type: 'pie',
+			data: {
+				labels: ['With Internship', 'No Internship'],
+				datasets: [
+					{
+						label: 'Count',
+						data: [stats.internshipStats.withInternship, stats.internshipStats.noInternship],
+						// Colors: Green, Red
+						backgroundColor: ['#10B981', '#EF4444'],
+						hoverOffset: 4
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: { legend: { display: false } }
+			}
+		});
 	}
 
 	async function handleAddStudent(event) {
@@ -239,23 +207,9 @@
 	});
 
 	onDestroy(() => {
-		if (clockInterval) {
-			clearInterval(clockInterval);
-		}
-		if (completionChartInstance) {
-			try {
-				completionChartInstance.destroy();
-			} catch (e) {
-				console.error('Error destroying completion chart on unmount:', e);
-			}
-		}
-		if (internshipChartInstance) {
-			try {
-				internshipChartInstance.destroy();
-			} catch (e) {
-				console.error('Error destroying internship chart on unmount:', e);
-			}
-		}
+		if (clockInterval) clearInterval(clockInterval);
+		if (completionChartInstance) completionChartInstance.destroy();
+		if (internshipChartInstance) internshipChartInstance.destroy();
 	});
 
 	let today = new Date();
@@ -481,6 +435,10 @@
 							<div class="flex items-center gap-1">
 								<span class="h-3 w-3 rounded-full bg-yellow-400"></span>
 								<span>On-going: {stats.completionStats.ongoing}</span>
+							</div>
+							<div class="flex items-center gap-1">
+								<span class="h-3 w-3 rounded-full bg-blue-500"></span>
+								<span>Processing: {stats.completionStats.processing}</span>
 							</div>
 						</div>
 						<div class="mt-1 text-center text-xs text-gray-500">

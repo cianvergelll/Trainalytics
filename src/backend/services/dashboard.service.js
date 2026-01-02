@@ -12,7 +12,7 @@ export async function getDashboardStats() {
 
         console.log('Querying total companies...');
         const [[{ totalCompanies }]] = await pool.query(
-            "SELECT COUNT(DISTINCT CompanyName) as totalCompanies FROM im_system.im_cec_students WHERE CompanyName IS NOT NULL AND CompanyName != ''"
+            "SELECT COUNT(DISTINCT CompanyName) as totalCompanies FROM im_system.im_cec_students WHERE CompanyName IS NOT NULL AND CompanyName != '' AND CompanyName != 'None'"
         );
         console.log(`Total companies found: ${totalCompanies}`);
 
@@ -20,19 +20,22 @@ export async function getDashboardStats() {
         const [completionStatus] = await pool.query(`
             SELECT
                 SUM(CASE WHEN IsCompleted = 1 THEN 1 ELSE 0 END) AS completedCount,
-                SUM(CASE WHEN IsActive = 1 AND IsCompleted = 0 THEN 1 ELSE 0 END) AS ongoingCount
+                SUM(CASE WHEN IsActive = 1 AND IsCompleted = 0 AND TargetHours > 0 THEN 1 ELSE 0 END) AS ongoingCount,
+                SUM(CASE WHEN IsActive = 1 AND IsCompleted = 0 AND TargetHours = 0 THEN 1 ELSE 0 END) AS processingCount
             FROM im_system.im_cec_students
             WHERE IsActive = 1 OR IsCompleted = 1
         `);
+
         const completed = completionStatus[0]?.completedCount || 0;
         const ongoing = completionStatus[0]?.ongoingCount || 0;
-        console.log(`Completion stats: Completed=${completed}, Ongoing=${ongoing}`);
+        const processing = completionStatus[0]?.processingCount || 0;
+        console.log(`Completion stats: Completed=${completed}, Ongoing=${ongoing}, Processing=${processing}`);
 
         console.log('Querying internship status...');
         const [internshipStatus] = await pool.query(`
             SELECT
-                SUM(CASE WHEN CompanyName IS NOT NULL AND CompanyName != '' THEN 1 ELSE 0 END) AS withInternshipCount,
-                SUM(CASE WHEN CompanyName IS NULL OR CompanyName = '' THEN 1 ELSE 0 END) AS noInternshipCount
+                SUM(CASE WHEN CompanyName IS NOT NULL AND CompanyName != '' AND CompanyName != 'None' THEN 1 ELSE 0 END) AS withInternshipCount,
+                SUM(CASE WHEN CompanyName IS NULL OR CompanyName = '' OR CompanyName = 'None' THEN 1 ELSE 0 END) AS noInternshipCount
             FROM im_system.im_cec_students
             WHERE IsActive = 1 OR IsCompleted = 1
         `);
@@ -47,6 +50,7 @@ export async function getDashboardStats() {
             completionStats: {
                 completed: completed,
                 ongoing: ongoing,
+                processing: processing,
             },
             internshipStats: {
                 withInternship: withInternship,
@@ -58,4 +62,3 @@ export async function getDashboardStats() {
         throw error;
     }
 }
-
