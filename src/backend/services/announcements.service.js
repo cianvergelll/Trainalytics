@@ -39,7 +39,6 @@ export async function getAnnouncementsPaginated(page = 1, limit = 10, searchTerm
     }
 
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
-
     const [announcements] = await pool.query(
         `
         SELECT 
@@ -50,21 +49,21 @@ export async function getAnnouncementsPaginated(page = 1, limit = 10, searchTerm
             ann.CreatedAt,
             ann.UpdatedAt AS LastModified,
             ann.AttachmentPath,
-            ann.IsActive
+            ann.IsActive,
+            ann.StartDate,
+            ann.EndDate
         ${baseQuery} 
         ORDER BY ann.CreatedAt DESC 
         LIMIT ? OFFSET ?
     `,
         [...params, limit, offset]
     );
-
     const formattedAnnouncements = announcements.map((ann) => ({
         ...ann,
         CreatedAt: formatDateTime(ann.CreatedAt),
         LastModified: formatDateTime(ann.LastModified),
         UpdatedBy: ann.CreatedBy || 'System',
     }));
-
     return { announcements: formattedAnnouncements, total };
 }
 
@@ -76,7 +75,6 @@ export async function createAnnouncement(data, adminId) {
         startDate,
         endDate,
     } = data;
-
     const [result] = await pool.query(
         `
         INSERT INTO im_system.im_cec_announcements
@@ -85,7 +83,6 @@ export async function createAnnouncement(data, adminId) {
     `,
         [adminId, title, description, targetAudience, startDate, endDate]
     );
-
     return { id: result.insertId, ...data };
 }
 

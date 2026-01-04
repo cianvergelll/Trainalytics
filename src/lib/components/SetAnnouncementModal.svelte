@@ -12,10 +12,26 @@
 		attachment: null
 	});
 
+	function extractDate(dateVal) {
+		if (!dateVal) return '';
+		const d = new Date(dateVal);
+		return d.toISOString().split('T')[0];
+	}
+
+	function extractTime(dateVal) {
+		if (!dateVal) return '09:00';
+		const d = new Date(dateVal);
+		return d.toTimeString().slice(0, 5);
+	}
+
 	$effect(() => {
 		if (show && announcementToEdit) {
 			announcement.title = announcementToEdit.Title || '';
 			announcement.description = announcementToEdit.Description || '';
+			announcement.startDate = extractDate(announcementToEdit.StartDate);
+			announcement.startTime = extractTime(announcementToEdit.StartDate);
+			announcement.endDate = extractDate(announcementToEdit.EndDate);
+			announcement.endTime = extractTime(announcementToEdit.EndDate);
 		} else if (show && !announcementToEdit) {
 			announcement = {
 				title: '',
@@ -46,27 +62,19 @@
 	}
 
 	function handleKeydown(event) {
-		if (event.key === 'Escape') {
-			handleClose();
-		}
+		if (event.key === 'Escape') handleClose();
 	}
 
 	function handleWindowClick(event) {
-		if (event.target === modalElement) {
-			handleClose();
-		}
+		if (event.target === modalElement) handleClose();
 	}
 
 	function handleFileDrop(e) {
-		if (e.dataTransfer.files) {
-			announcement.attachment = e.dataTransfer.files[0];
-		}
+		if (e.dataTransfer.files) announcement.attachment = e.dataTransfer.files[0];
 	}
 
 	function handleFileInput(e) {
-		if (e.target.files) {
-			announcement.attachment = e.target.files[0];
-		}
+		if (e.target.files) announcement.attachment = e.target.files[0];
 	}
 </script>
 
@@ -75,7 +83,7 @@
 {#if show}
 	<div
 		bind:this={modalElement}
-		class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-300/85"
+		class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-900"
 	>
 		<div
 			class="w-full max-w-2xl rounded-lg border-4 border-green-200 bg-white p-6 shadow-xl"
@@ -102,14 +110,14 @@
 
 				<div>
 					<label for="description" class="block text-sm font-medium text-gray-700"
-						>Announcement Description</label
+						>Description</label
 					>
 					<textarea
 						id="description"
 						bind:value={announcement.description}
 						rows="3"
 						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
-						placeholder="Enter Announcement Description..."
+						placeholder="Enter details..."
 						required
 					></textarea>
 				</div>
@@ -172,8 +180,7 @@
 				</div>
 
 				<div>
-					<label for="file-upload" class="block text-sm font-medium text-gray-700"
-						>File Attachment</label
+					<label for="file-upload" class="block text-sm font-medium text-gray-700">Attachment</label
 					>
 					<div
 						role="button"
@@ -222,10 +229,10 @@
 									/>
 								</label>
 							</div>
-							<p class="text-xs text-gray-500">Format: .jpeg, .png & Max file size: 25 MB</p>
+							<p class="text-xs text-gray-500">Format: .jpeg, .png & Max: 25 MB</p>
 							{#if announcement.attachment}
 								<p class="text-sm font-medium text-green-700">
-									File selected: {announcement.attachment.name}
+									Selected: {announcement.attachment.name}
 								</p>
 							{/if}
 						</div>
@@ -237,8 +244,9 @@
 						type="button"
 						onclick={handleClose}
 						class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-						>Cancel</button
 					>
+						Cancel
+					</button>
 					<button
 						type="submit"
 						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
