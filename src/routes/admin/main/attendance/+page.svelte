@@ -62,7 +62,7 @@
 	}
 
 	function handleView(journal) {
-		goto(`/admin/main/attendace/view`);
+		goto(`/admin/main/attendance/view`);
 	}
 
 	onMount(() => {
