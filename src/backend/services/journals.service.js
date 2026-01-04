@@ -37,10 +37,8 @@ function formatDateTimeIntl(dtString) {
     }
 }
 
-
 export async function getJournalsPaginated(page = 1, limit = 10, searchTerm = '', filters = {}) {
     const offset = (page - 1) * limit;
-
     let baseQuery = `
         FROM im_system.im_cec_journal AS journal
         LEFT JOIN im_system.im_cec_students AS student ON journal.StudentID = student.StudentID
@@ -56,14 +54,13 @@ export async function getJournalsPaginated(page = 1, limit = 10, searchTerm = ''
     }
 
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
-
     const [journals] = await pool.query(
         `
         SELECT
             journal.ID,
-            journal.Date, -- This is a DATE type
+            journal.Date,
             journal.Status,
-            journal.DateApproved, -- This is a DATETIME type
+            journal.DateApproved,
             student.StudentName AS StudentName,
             student.Section AS Section,
             student.CompanyName AS CompanyName
@@ -83,24 +80,81 @@ export async function getJournalsPaginated(page = 1, limit = 10, searchTerm = ''
         Status: journal.Status,
         DateApproved: formatDateIntl(journal.DateApproved),
     }));
-
     return { journals: formattedJournals, total };
 }
 
 export async function createJournal(data, adminId) {
     const { studentId, title, description, date } = data;
-
     if (!adminId) throw new Error('Admin privileges required.');
 
     const [result] = await pool.query(
         `
         INSERT INTO im_system.im_cec_journal
         (StudentID, SchoolID, DepartmentID, Date, Title, Description, Status)
-        VALUES (?, 'CEC', 'IT', ?, ?, ?, 'approved') -- Ensure DepartmentID matches VARCHAR type
+        VALUES (?, 'CEC', 'IT', ?, ?, ?, 'approved') 
     `,
         [studentId, date, title, description]
     );
-
     return { id: result.insertId, ...data };
 }
 
+// NEW FUNCTION ADDED BELOW
+export async function addJournalFeedback(journalId, adminId, message) {
+    const [result] = await pool.query(
+        `INSERT INTO im_system.im_cec_journal_feedback 
+        (JournalID, AdminID, Message) 
+        VALUES (?, ?, ?)`,
+        [journalId, adminId, message]
+    );
+    return result.insertId;
+}
+
+export async function getJournalById(journalId) {
+    try {
+        const [rows] = await pool.query(
+            `SELECT 
+                j.ID,
+                j.Date,
+                j.Title,
+                j.Description,
+                j.Status,
+                j.Reflection1,
+                j.Reflection2,
+                j.Reflection3,
+                s.StudentName, 
+                s.CompanyName,
+                s.SupervisorName  -- <--- Selecting this now
+             FROM im_system.im_cec_journal j
+             LEFT JOIN im_system.im_cec_students s ON j.StudentID = s.StudentID
+             WHERE j.ID = ?`,
+            [journalId]
+        );
+
+        if (rows.length === 0) return null;
+
+        const journal = rows[0];
+
+        const formatDate = (d) => {
+            if (!d) return 'N/A';
+            return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        };
+
+        return {
+            ID: journal.ID,
+            studentName: journal.StudentName || 'Unknown',
+            company: journal.CompanyName || 'N/A',
+            supervisor: journal.SupervisorName || 'N/A',
+            taskName: journal.Title,
+            taskDescription: journal.Description,
+            date: formatDate(journal.Date),
+            status: journal.Status,
+            q1: journal.Reflection1 || '',
+            q2: journal.Reflection2 || '',
+            q3: journal.Reflection3 || '',
+            filename: 'Journal Entry #' + journal.ID
+        };
+    } catch (error) {
+        console.error("SQL Error in getJournalById:", error);
+        throw error;
+    }
+}

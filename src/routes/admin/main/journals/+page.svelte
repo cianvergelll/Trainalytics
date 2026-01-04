@@ -74,7 +74,7 @@
 	}
 
 	function handleView(journal) {
-		goto('/admin/main/journals/view');
+		goto(`/admin/main/journals/view?id=${journal.ID}`);
 	}
 
 	async function handleLogout() {
@@ -186,7 +186,7 @@
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-3">
 										<button
-											onclick={handleView}
+											onclick={handleView(journal)}
 											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
 											title="View Announcement"
 										>
