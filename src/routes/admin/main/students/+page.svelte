@@ -413,6 +413,8 @@
 										</button>
 
 										<button
+											onclick={() =>
+												goto(`/admin/main/attendance/view?id=${student.StudentID}&from=students`)}
 											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
 											aria-label="View Attendance"
 											title="View Attendance"

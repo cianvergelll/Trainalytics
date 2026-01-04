@@ -62,7 +62,7 @@
 	}
 
 	function handleView(attendance) {
-		goto(`/admin/main/attendance/view?id=${attendance.StudentID}`);
+		goto(`/admin/main/attendance/view?id=${attendance.StudentID}&from=attendance`);
 	}
 
 	onMount(() => {

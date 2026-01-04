@@ -5,6 +5,7 @@
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
 	let studentId = $derived($page.url.searchParams.get('id'));
+	let fromPage = $derived($page.url.searchParams.get('from'));
 
 	let studentInfo = $state({
 		name: '',
@@ -88,7 +89,11 @@
 	}
 
 	function handleBack() {
-		goto('/admin/main/attendance');
+		if (fromPage === 'students') {
+			goto('/admin/main/students');
+		} else {
+			goto('/admin/main/attendance');
+		}
 	}
 
 	function getStatusColor(status) {
