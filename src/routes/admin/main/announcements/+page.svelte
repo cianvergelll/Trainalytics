@@ -15,17 +15,26 @@
 	let error = $state('');
 	let successMessage = $state('');
 
-	// Modal States
 	let showSetAnnouncementModal = $state(false);
 	let showViewModal = $state(false);
 	let showArchiveModal = $state(false);
 
-	let selectedAnnouncement = $state(null); // For View/Edit
-	let announcementToArchiveId = $state(null); // For Archive
+	let selectedAnnouncement = $state(null);
+	let announcementToArchiveId = $state(null);
 
 	async function fetchAnnouncements(page, search = '') {
 		const params = new URLSearchParams({ page, limit, search: search });
 		const queryString = params.toString();
+		const cacheKey = `announcements?${queryString}`;
+		const cachedData = sessionStorage.getItem(cacheKey);
+
+		if (cachedData) {
+			const data = JSON.parse(cachedData);
+			announcements = data.announcements;
+			currentPage = data.currentPage;
+			totalPages = data.totalPages;
+			return;
+		}
 
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -34,6 +43,7 @@
 			});
 
 			if (res.status === 401) {
+				sessionStorage.clear();
 				localStorage.removeItem('sessionToken');
 				goto('/login');
 				return;
@@ -44,6 +54,7 @@
 				announcements = data.announcements;
 				currentPage = data.currentPage;
 				totalPages = data.totalPages;
+				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
 				error = 'Failed to fetch announcements.';
 			}
@@ -53,22 +64,18 @@
 		}
 	}
 
-	// 1. VIEW ACTION
 	function handleView(announcement) {
 		selectedAnnouncement = announcement;
 		showViewModal = true;
 	}
 
-	// 2. EDIT ACTION
 	function handleEdit(announcement) {
-		selectedAnnouncement = announcement; // Pass this to the SetModal to pre-fill
+		selectedAnnouncement = announcement;
 		showSetAnnouncementModal = true;
 	}
 
-	// Handle the actual update logic (passed to modal)
 	async function handleUpdateAnnouncement(event) {
 		const { id, ...data } = event.detail;
-		// Remove attachment logic for now if not implemented
 		delete data.attachment;
 
 		try {
@@ -87,6 +94,7 @@
 				selectedAnnouncement = null;
 				successMessage = 'Announcement updated successfully.';
 				setTimeout(() => (successMessage = ''), 3000);
+				sessionStorage.clear();
 				fetchAnnouncements(currentPage, searchTerm);
 			} else {
 				error = 'Failed to update announcement.';
@@ -97,7 +105,6 @@
 	}
 
 	async function handleSetAnnouncement(event) {
-		// Existing Create Logic...
 		const newAnnouncementData = event.detail;
 		const dataToSend = { ...newAnnouncementData };
 		delete dataToSend.attachment;
@@ -115,9 +122,10 @@
 
 			if (res.ok) {
 				showSetAnnouncementModal = false;
-				fetchAnnouncements(1, searchTerm);
 				successMessage = 'Announcement created successfully.';
 				setTimeout(() => (successMessage = ''), 3000);
+				sessionStorage.clear();
+				fetchAnnouncements(1, searchTerm);
 			} else {
 				error = 'Failed to set announcement.';
 			}
@@ -126,7 +134,6 @@
 		}
 	}
 
-	// 3. ARCHIVE ACTION
 	function handleArchive(id) {
 		announcementToArchiveId = id;
 		showArchiveModal = true;
@@ -147,6 +154,7 @@
 				announcementToArchiveId = null;
 				successMessage = 'Announcement archived successfully.';
 				setTimeout(() => (successMessage = ''), 3000);
+				sessionStorage.clear();
 				fetchAnnouncements(currentPage, searchTerm);
 			} else {
 				error = 'Failed to archive announcement.';
@@ -163,6 +171,7 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
+			sessionStorage.clear();
 			fetchAnnouncements(1, searchTerm);
 		}, 300);
 	}

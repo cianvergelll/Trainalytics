@@ -24,6 +24,16 @@
 			archived: 'true'
 		});
 		const queryString = params.toString();
+		const cacheKey = `announcements_archived?${queryString}`;
+		const cachedData = sessionStorage.getItem(cacheKey);
+
+		if (cachedData) {
+			const data = JSON.parse(cachedData);
+			announcements = data.announcements;
+			currentPage = data.currentPage;
+			totalPages = data.totalPages;
+			return;
+		}
 
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -43,7 +53,7 @@
 				announcements = data.announcements;
 				currentPage = data.currentPage;
 				totalPages = data.totalPages;
-				// REMOVED: sessionStorage.setItem(...)
+				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
 				error = 'Failed to load archived announcements.';
 			}
@@ -97,6 +107,7 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
+			sessionStorage.clear();
 			fetchArchivedAnnouncements(1, searchTerm);
 		}, 300);
 	}
