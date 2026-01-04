@@ -83,7 +83,7 @@
 {#if show}
 	<div
 		bind:this={modalElement}
-		class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-900"
+		class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-300/85"
 	>
 		<div
 			class="w-full max-w-2xl rounded-lg border-4 border-green-200 bg-white p-6 shadow-xl"
