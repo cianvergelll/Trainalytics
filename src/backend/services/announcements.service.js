@@ -24,8 +24,6 @@ export async function getAnnouncementsPaginated(page = 1, limit = 10, searchTerm
     `;
     const params = [];
 
-    console.log(`Fetching Announcements. Filter archived: ${filters.archived}`);
-
     if (filters.archived === 'true' || filters.archived === true) {
         baseQuery += ' AND ann.IsActive = 0';
     } else {
