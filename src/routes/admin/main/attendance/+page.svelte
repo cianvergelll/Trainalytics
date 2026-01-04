@@ -61,8 +61,8 @@
 		console.log('Adding attendance (placeholder):', newAttendanceData);
 	}
 
-	function handleView(journal) {
-		goto(`/admin/main/attendance/view`);
+	function handleView(attendance) {
+		goto(`/admin/main/attendance/view?id=${attendance.StudentID}`);
 	}
 
 	onMount(() => {
@@ -175,9 +175,9 @@
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-3">
 										<button
-											onclick={handleView}
+											onclick={() => handleView(att)}
 											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
-											title="View Announcement"
+											title="View Attendance"
 										>
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
