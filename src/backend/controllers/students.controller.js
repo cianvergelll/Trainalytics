@@ -129,3 +129,31 @@ export async function toggleArchiveStudent(req, res) {
         res.status(500).json({ error: 'Server error updating archive status.' });
     }
 }
+
+export async function getStudentProfile(req, res) {
+    try {
+        const { id } = req.params;
+        const student = await studentsService.getStudentByStudentId(id);
+
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found.' });
+        }
+
+        let age = 'N/A';
+        if (student.BirthDate) {
+            const birth = new Date(student.BirthDate);
+            const today = new Date();
+            let calculatedAge = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                calculatedAge--;
+            }
+            age = calculatedAge;
+        }
+
+        res.json({ ...student, Age: age });
+    } catch (err) {
+        console.error('Error fetching student profile:', err);
+        res.status(500).json({ error: 'Server error fetching profile.' });
+    }
+}

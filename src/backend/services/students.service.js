@@ -118,3 +118,11 @@ export async function setStudentArchiveStatus(studentId, isArchived) {
     );
     return result.affectedRows > 0;
 }
+
+export async function getStudentByStudentId(studentId) {
+    const [rows] = await pool.query(
+        'SELECT * FROM im_cec_students WHERE StudentID = ?',
+        [studentId]
+    );
+    return rows[0];
+}

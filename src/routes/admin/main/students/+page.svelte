@@ -391,7 +391,7 @@
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-2">
 										<button
-											onclick={() => goto('/admin/main/students/profile')}
+											onclick={() => goto(`/admin/main/students/profile?id=${student.StudentID}`)}
 											class="text-blue-700 transition-colors duration-200 hover:text-blue-900"
 											aria-label="View Profile"
 											title="View Profile"
