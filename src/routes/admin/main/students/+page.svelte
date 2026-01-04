@@ -436,6 +436,8 @@
 										</button>
 
 										<button
+											onclick={() =>
+												goto(`/admin/main/journals/student?id=${student.StudentID}&from=students`)}
 											class="text-lime-600 transition-colors duration-200 hover:text-lime-800"
 											aria-label="View Journals"
 											title="View Journals"

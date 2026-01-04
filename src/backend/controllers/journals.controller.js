@@ -74,3 +74,27 @@ export async function submitFeedback(req, res) {
         res.status(500).json({ error: 'Server error while submitting feedback.' });
     }
 }
+
+export async function getStudentJournals(req, res) {
+    try {
+        const { id } = req.params;
+        const page = parseInt(req.query.page || '1', 10);
+        const limit = parseInt(req.query.limit || '10', 10);
+
+        const result = await journalsService.getStudentJournalLogs(id, page, limit);
+
+        if (!result) {
+            return res.status(404).json({ error: 'Student not found.' });
+        }
+
+        res.json({
+            student: result.student,
+            logs: result.logs,
+            totalPages: Math.ceil(result.total / limit),
+            currentPage: page
+        });
+    } catch (err) {
+        console.error('Failed to get student journal logs:', err);
+        res.status(500).json({ error: 'Server error fetching student journals.' });
+    }
+}

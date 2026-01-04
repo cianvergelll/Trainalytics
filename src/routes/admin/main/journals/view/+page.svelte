@@ -4,8 +4,9 @@
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
-	// Get Journal ID from URL query parameter (e.g., ?id=123)
 	let journalId = $derived($page.url.searchParams.get('id'));
+	let fromPage = $derived($page.url.searchParams.get('from'));
+	let sourceStudentId = $derived($page.url.searchParams.get('studentId'));
 
 	let journal = $state({
 		studentName: '',
@@ -56,7 +57,11 @@
 	}
 
 	function handleBack() {
-		goto('/admin/main/journals');
+		if (fromPage === 'student-list' && sourceStudentId) {
+			goto(`/admin/main/journals/student?id=${sourceStudentId}&from=students`);
+		} else {
+			goto('/admin/main/journals');
+		}
 	}
 
 	async function handleSubmitFeedback() {

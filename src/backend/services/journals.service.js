@@ -158,3 +158,60 @@ export async function getJournalById(journalId) {
         throw error;
     }
 }
+
+export async function getStudentJournalLogs(studentId, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    const [studentRows] = await pool.query(
+        `SELECT StudentName, StudentID, CompanyName, SupervisorName, TargetHours, IsActive 
+         FROM im_cec_students 
+         WHERE StudentID = ?`,
+        [studentId]
+    );
+
+    if (studentRows.length === 0) return null;
+    const student = studentRows[0];
+
+    const [[{ totalRendered }]] = await pool.query(
+        `SELECT SUM(HoursRendered) as totalRendered FROM im_cec_attendance WHERE StudentID = ?`,
+        [studentId]
+    );
+    const rendered = parseFloat(totalRendered || 0);
+    const remaining = Math.max(0, parseFloat(student.TargetHours) - rendered);
+
+    const [[{ totalRecords }]] = await pool.query(
+        `SELECT COUNT(*) as totalRecords FROM im_cec_journal WHERE StudentID = ?`,
+        [studentId]
+    );
+
+    const [journals] = await pool.query(
+        `SELECT ID, Date, Status, DateApproved 
+         FROM im_cec_journal 
+         WHERE StudentID = ? 
+         ORDER BY Date DESC 
+         LIMIT ? OFFSET ?`,
+        [studentId, limit, offset]
+    );
+
+    const formattedJournals = journals.map((j) => ({
+        ID: j.ID,
+        Date: formatDateIntl(j.Date),
+        Status: j.Status,
+        DateApproved: formatDateIntl(j.DateApproved)
+    }));
+
+    return {
+        student: {
+            name: student.StudentName,
+            studentId: student.StudentID,
+            company: student.CompanyName || 'N/A',
+            supervisor: student.SupervisorName || 'N/A',
+            targetHours: student.TargetHours,
+            totalRendered: rendered.toFixed(2),
+            remainingHours: remaining.toFixed(2),
+            isActive: student.IsActive
+        },
+        logs: formattedJournals,
+        total: totalRecords
+    };
+}
