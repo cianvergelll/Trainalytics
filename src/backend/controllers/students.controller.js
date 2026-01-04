@@ -157,3 +157,24 @@ export async function getStudentProfile(req, res) {
         res.status(500).json({ error: 'Server error fetching profile.' });
     }
 }
+
+// Add to src/backend/controllers/students.controller.js
+
+export async function updateStudentDetails(req, res) {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+
+        const success = await studentsService.updateStudent(id, updates);
+
+        if (!success) {
+            return res.json({ message: 'No changes detected or update failed.' });
+        }
+
+        res.json({ message: 'Student updated successfully.' });
+    } catch (err) {
+        console.error('Failed to update student:', err);
+        res.status(500).json({ error: 'Server error while updating student.' });
+    }
+}

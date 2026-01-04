@@ -455,6 +455,8 @@
 										</button>
 
 										<button
+											onclick={() =>
+												goto(`/admin/main/students/profile?id=${student.StudentID}&edit=true`)}
 											class="text-indigo-900 transition-colors duration-200 hover:text-indigo-700"
 											aria-label="Edit Student"
 											title="Edit Student"

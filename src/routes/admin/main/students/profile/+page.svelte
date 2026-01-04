@@ -5,52 +5,47 @@
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
 	let studentId = $derived($page.url.searchParams.get('id'));
+	let autoEdit = $derived($page.url.searchParams.get('edit') === 'true');
+
 	let isLoading = $state(true);
+	let isSaving = $state(false);
+	let isEditing = $state(false);
 	let error = $state('');
+
 	let studentData = $state({});
+	let originalData = $state({});
 
-	// Dynamic mapping of DB columns to Document List
-	let documents = $derived([
-		{
-			name: 'Memorandum of Agreement',
-			status: studentData.HasMOA ? 'uploaded' : 'missing'
-		},
-		{
-			name: 'Parent Waiver',
-			status: studentData.HasWaiver ? 'uploaded' : 'missing'
-		},
-		{
-			name: 'Endorsement Letter',
-			status: studentData.HasEndorsement ? 'uploaded' : 'missing'
-		},
-		{
-			name: 'Evaluation Form',
-			status: studentData.HasEvaluation ? 'uploaded' : 'missing'
-		},
-		{
-			name: 'Certificate of Completion',
-			status: studentData.HasCompletion ? 'uploaded' : 'missing'
-		}
-	]);
+	// Dynamic Document Mapping
+	// We map the UI Name to the Database Column Name
+	let documentList = [
+		{ name: 'Memorandum of Agreement', key: 'HasMOA' },
+		{ name: 'Parent Waiver', key: 'HasWaiver' },
+		{ name: 'Endorsement Letter', key: 'HasEndorsement' },
+		{ name: 'Evaluation Form', key: 'HasEvaluation' },
+		{ name: 'Certificate of Completion', key: 'HasCompletion' }
+	];
 
-	function formatValue(value) {
-		return value ? value : 'TBD';
+	function formatDateForInput(dateString) {
+		if (!dateString) return '';
+		const date = new Date(dateString);
+		if (isNaN(date.getTime())) return '';
+		return date.toISOString().split('T')[0];
 	}
 
-	function formatDate(dateString) {
-		if (!dateString) return 'TBD';
+	function formatDateDisplay(dateString) {
+		if (!dateString) return 'TBA';
 		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return 'TBD';
+		if (isNaN(date.getTime())) return 'TBA';
 		return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 	}
 
-	function formatNumber(value) {
-		return value ? parseFloat(value).toFixed(2) : '0.00';
+	function formatValue(value) {
+		return value ? value : 'TBA';
 	}
 
 	async function fetchStudentDetails() {
 		if (!studentId) {
-			error = 'No Student ID provided in URL.';
+			error = 'No Student ID provided.';
 			isLoading = false;
 			return;
 		}
@@ -62,7 +57,10 @@
 			});
 
 			if (res.ok) {
-				studentData = await res.json();
+				const data = await res.json();
+				studentData = { ...data };
+				originalData = { ...data };
+				if (autoEdit) isEditing = true;
 			} else {
 				error = 'Student not found.';
 			}
@@ -72,6 +70,38 @@
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	async function saveChanges() {
+		isSaving = true;
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/students/${studentId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(studentData)
+			});
+
+			if (res.ok) {
+				originalData = { ...studentData };
+				isEditing = false;
+			} else {
+				alert('Failed to save changes.');
+			}
+		} catch (e) {
+			console.error(e);
+			alert('Network error while saving.');
+		} finally {
+			isSaving = false;
+		}
+	}
+
+	function cancelEdit() {
+		studentData = { ...originalData };
+		isEditing = false;
 	}
 
 	onMount(() => {
@@ -112,26 +142,60 @@
 						</div>
 
 						<div class="flex flex-wrap items-center gap-3">
-							<button
-								onclick={handleBack}
-								class="flex h-12 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 shadow-sm transition hover:bg-gray-100 active:scale-95"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="2.5"
-									stroke="currentColor"
-									class="h-4 w-4 text-gray-600"
+							{#if isEditing}
+								<button
+									onclick={cancelEdit}
+									class="rounded-md border border-gray-300 bg-white px-6 py-2.5 font-bold text-gray-700 shadow-sm hover:bg-gray-100"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-									/>
-								</svg>
-								<span class="text-sm font-bold tracking-wide text-neutral-600 uppercase">Back</span>
-							</button>
+									Cancel
+								</button>
+								<button
+									onclick={saveChanges}
+									disabled={isSaving}
+									class="flex items-center gap-2 rounded-md bg-green-600 px-6 py-2.5 font-bold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
+								>
+									{#if isSaving}Saving...{:else}Save Changes{/if}
+								</button>
+							{:else}
+								<button
+									onclick={handleBack}
+									class="flex h-12 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 shadow-sm transition hover:bg-gray-100"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke-width="2.5"
+										stroke="currentColor"
+										class="h-4 w-4 text-gray-600"
+										><path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+										/></svg
+									>
+									<span class="text-sm font-bold tracking-wide text-neutral-600 uppercase"
+										>Back</span
+									>
+								</button>
+
+								<button
+									onclick={() => (isEditing = true)}
+									class="flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-green-600 shadow-sm ring-1 ring-green-200 transition hover:bg-green-500 hover:text-white"
+									title="Edit Profile"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										class="h-5 w-5"
+									>
+										<path
+											d="M21.731 2.269a2.625 2.625 0 11-3.713 3.712l-1.828 1.827 3.713 3.713 1.828-1.828a2.625 2.625 0 013.713-3.713zM15.135 6.857l-11.83 11.83a.375.375 0 00-.093.156l-1.25 4.543a.375.375 0 00.455.455l4.543-1.25a.375.375 0 00.156-.093l11.83-11.83-3.713-3.713z"
+										/>
+									</svg>
+								</button>
+							{/if}
 						</div>
 					</div>
 
@@ -152,56 +216,111 @@
 								</h3>
 								<div class="grid grid-cols-1 gap-y-6 text-sm md:grid-cols-3 md:gap-y-0">
 									<div class="space-y-4 border-gray-100 md:border-r md:pr-8">
-										<div class="flex items-center justify-between">
+										<div class="flex h-9 items-center justify-between">
 											<span class="font-medium text-gray-500">Student ID:</span>
 											<span class="font-semibold text-gray-900"
 												>{formatValue(studentData.StudentID)}</span
 											>
 										</div>
-										<div class="flex items-center justify-between">
-											<span class="font-medium text-gray-500">Name:</span>
-											<span class="font-semibold text-gray-900"
-												>{formatValue(studentData.StudentName)}</span
-											>
+										<div class="flex h-9 items-center justify-between">
+											<span class="self-center font-medium text-gray-500">Name:</span>
+											{#if isEditing}
+												<input
+													type="text"
+													bind:value={studentData.StudentName}
+													class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+												/>
+											{:else}
+												<span class="font-semibold text-gray-900"
+													>{formatValue(studentData.StudentName)}</span
+												>
+											{/if}
 										</div>
-										<div class="flex items-center justify-between">
-											<span class="font-medium text-gray-500">Gender:</span>
-											<span class="font-semibold text-gray-900"
-												>{formatValue(studentData.Gender)}</span
-											>
+										<div class="flex h-9 items-center justify-between">
+											<span class="self-center font-medium text-gray-500">Gender:</span>
+											{#if isEditing}
+												<select
+													bind:value={studentData.Gender}
+													class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+												>
+													<option value="Male">Male</option>
+													<option value="Female">Female</option>
+													<option value="Other">Other</option>
+												</select>
+											{:else}
+												<span class="font-semibold text-gray-900"
+													>{formatValue(studentData.Gender)}</span
+												>
+											{/if}
 										</div>
 									</div>
+
 									<div class="space-y-4 border-gray-100 md:border-r md:px-8">
-										<div class="flex items-center justify-between">
-											<span class="font-medium text-gray-500">Birthday:</span>
-											<span class="font-semibold text-gray-900"
-												>{formatDate(studentData.BirthDate)}</span
-											>
+										<div class="flex h-9 items-center justify-between">
+											<span class="self-center font-medium text-gray-500">Birthday:</span>
+											{#if isEditing}
+												<input
+													type="date"
+													value={formatDateForInput(studentData.BirthDate)}
+													oninput={(e) => (studentData.BirthDate = e.target.value)}
+													class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+												/>
+											{:else}
+												<span class="font-semibold text-gray-900"
+													>{formatDateDisplay(studentData.BirthDate)}</span
+												>
+											{/if}
 										</div>
-										<div class="flex items-center justify-between">
+										<div class="flex h-9 items-center justify-between">
 											<span class="font-medium text-gray-500">Age:</span>
 											<span class="font-semibold text-gray-900">{formatValue(studentData.Age)}</span
 											>
 										</div>
-										<div class="flex items-center justify-between">
-											<span class="font-medium text-gray-500">Section:</span>
-											<span class="font-semibold text-gray-900"
-												>{formatValue(studentData.Section)}</span
-											>
+										<div class="flex h-9 items-center justify-between">
+											<span class="self-center font-medium text-gray-500">Section:</span>
+											{#if isEditing}
+												<input
+													type="text"
+													bind:value={studentData.Section}
+													class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+												/>
+											{:else}
+												<span class="font-semibold text-gray-900"
+													>{formatValue(studentData.Section)}</span
+												>
+											{/if}
 										</div>
 									</div>
+
 									<div class="space-y-4 md:pl-8">
-										<div class="flex items-center justify-between">
-											<span class="font-medium text-gray-500">Email:</span>
-											<span class="truncate font-semibold text-gray-900"
-												>{formatValue(studentData.Email)}</span
-											>
+										<div class="flex h-9 items-center justify-between">
+											<span class="self-center font-medium text-gray-500">Email:</span>
+											{#if isEditing}
+												<input
+													type="email"
+													bind:value={studentData.Email}
+													class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+												/>
+											{:else}
+												<span
+													class="max-w-[150px] truncate font-semibold text-gray-900"
+													title={studentData.Email}>{formatValue(studentData.Email)}</span
+												>
+											{/if}
 										</div>
-										<div class="flex items-center justify-between">
-											<span class="font-medium text-gray-500">Contact:</span>
-											<span class="font-semibold text-gray-900"
-												>{formatValue(studentData.ContactNumber)}</span
-											>
+										<div class="flex h-9 items-center justify-between">
+											<span class="self-center font-medium text-gray-500">Contact:</span>
+											{#if isEditing}
+												<input
+													type="text"
+													bind:value={studentData.ContactNumber}
+													class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+												/>
+											{:else}
+												<span class="font-semibold text-gray-900"
+													>{formatValue(studentData.ContactNumber)}</span
+												>
+											{/if}
 										</div>
 									</div>
 								</div>
@@ -217,65 +336,143 @@
 						</h3>
 						<div class="grid grid-cols-1 gap-y-6 text-sm md:grid-cols-3 md:gap-y-0">
 							<div class="space-y-4 border-gray-100 md:border-r md:pr-8">
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Company Name:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatValue(studentData.CompanyName)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Company Name:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.CompanyName}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatValue(studentData.CompanyName)}</span
+										>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Address:</span>
-									<span
-										class="max-w-[150px] truncate text-right font-semibold text-gray-900"
-										title={studentData.CompanyAddress}
-										>{formatValue(studentData.CompanyAddress)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Address:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.CompanyAddress}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span
+											class="max-w-[150px] truncate text-right font-semibold text-gray-900"
+											title={studentData.CompanyAddress}
+											>{formatValue(studentData.CompanyAddress)}</span
+										>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Department:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatValue(studentData.AssignedDepartment)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Department:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.AssignedDepartment}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatValue(studentData.AssignedDepartment)}</span
+										>
+									{/if}
 								</div>
 							</div>
+
 							<div class="space-y-4 border-gray-100 md:border-r md:px-8">
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Role/Position:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatValue(studentData.Position)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Role/Position:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.Position}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatValue(studentData.Position)}</span
+										>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Supervisor:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatValue(studentData.SupervisorName)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Supervisor:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.SupervisorName}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatValue(studentData.SupervisorName)}</span
+										>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Supervisor Email:</span>
-									<span
-										class="max-w-[150px] truncate font-semibold text-gray-900"
-										title={studentData.SupervisorEmail}
-										>{formatValue(studentData.SupervisorEmail)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Supervisor Email:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.SupervisorEmail}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span
+											class="max-w-[150px] truncate font-semibold text-gray-900"
+											title={studentData.SupervisorEmail}
+											>{formatValue(studentData.SupervisorEmail)}</span
+										>
+									{/if}
 								</div>
 							</div>
+
 							<div class="space-y-4 md:pl-8">
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Start Date:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatDate(studentData.StartDate)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Start Date:</span>
+									{#if isEditing}
+										<input
+											type="date"
+											value={formatDateForInput(studentData.StartDate)}
+											oninput={(e) => (studentData.StartDate = e.target.value)}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatDateDisplay(studentData.StartDate)}</span
+										>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">End Date:</span>
-									<span class="font-semibold text-gray-900">{formatDate(studentData.EndDate)}</span>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">End Date:</span>
+									{#if isEditing}
+										<input
+											type="date"
+											value={formatDateForInput(studentData.EndDate)}
+											oninput={(e) => (studentData.EndDate = e.target.value)}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatDateDisplay(studentData.EndDate)}</span
+										>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Supervisor Contact:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatValue(studentData.SupervisorContact)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Supervisor Contact:</span>
+									{#if isEditing}
+										<input
+											type="text"
+											bind:value={studentData.SupervisorContact}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900"
+											>{formatValue(studentData.SupervisorContact)}</span
+										>
+									{/if}
 								</div>
 							</div>
 						</div>
@@ -289,47 +486,32 @@
 						</h3>
 						<div class="grid grid-cols-1 gap-16 text-sm md:grid-cols-2">
 							<div class="space-y-4 border-gray-100 md:border-r md:pr-16">
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Target Hours:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatNumber(studentData.TargetHours)}</span
-									>
+								<div class="flex h-9 items-center justify-between">
+									<span class="self-center font-medium text-gray-500">Target Hours:</span>
+									{#if isEditing}
+										<input
+											type="number"
+											bind:value={studentData.TargetHours}
+											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+										/>
+									{:else}
+										<span class="font-semibold text-gray-900">{studentData.TargetHours}</span>
+									{/if}
 								</div>
-								<div class="flex items-center justify-between">
+								<div class="flex h-9 items-center justify-between">
 									<span class="font-medium text-gray-500">Rendered Hours:</span>
-									<span class="font-semibold text-gray-900"
-										>{formatNumber(studentData.TotalHours)}</span
+									<span class="font-semibold text-gray-900">{studentData.TotalHours || '0.00'}</span
 									>
 								</div>
-								<div class="flex items-center justify-between">
+								<div class="flex h-9 items-center justify-between">
 									<span class="font-medium text-gray-500">Remaining Hours:</span>
 									<span class="font-bold text-green-600"
-										>{formatNumber(studentData.RemainingHours)}</span
+										>{studentData.RemainingHours || '0.00'}</span
 									>
 								</div>
 							</div>
 
-							<div class="space-y-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">MOA Submitted:</span>
-									<span class={studentData.HasMOA ? 'font-bold text-green-600' : 'text-red-500'}
-										>{studentData.HasMOA ? 'Yes' : 'No'}</span
-									>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Endorsement Letter:</span>
-									<span
-										class={studentData.HasEndorsement ? 'font-bold text-green-600' : 'text-red-500'}
-										>{studentData.HasEndorsement ? 'Yes' : 'No'}</span
-									>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="font-medium text-gray-500">Waiver:</span>
-									<span class={studentData.HasWaiver ? 'font-bold text-green-600' : 'text-red-500'}
-										>{studentData.HasWaiver ? 'Yes' : 'No'}</span
-									>
-								</div>
-							</div>
+							<div class="space-y-4"></div>
 						</div>
 					</div>
 
@@ -339,29 +521,33 @@
 						<div class="mb-6 flex items-start justify-between border-b border-gray-100 pb-4">
 							<div>
 								<h3 class="text-lg font-bold text-gray-800">Documents & Records</h3>
-								<p class="mt-0.5 text-xs font-medium text-gray-400">
-									{documents.length} Required Documents
-								</p>
+								<p class="mt-0.5 text-xs font-medium text-gray-400">Required Documents Checklist</p>
 							</div>
-							<button
-								class="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-green-700"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="2.5"
-									stroke="currentColor"
-									class="h-4 w-4"
+							{#if !isEditing}
+								<button
+									class="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-green-700"
 								>
-									<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-								</svg>
-								UPLOAD NEW
-							</button>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke-width="2.5"
+										stroke="currentColor"
+										class="h-4 w-4"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M12 4.5v15m7.5-7.5h-15"
+										/>
+									</svg>
+									UPLOAD NEW
+								</button>
+							{/if}
 						</div>
 
 						<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-							{#each documents as doc}
+							{#each documentList as doc}
 								<div
 									class="group flex items-center justify-between rounded-lg border border-gray-100 bg-white p-3 transition-all hover:border-green-200 hover:bg-green-50/30"
 								>
@@ -371,62 +557,60 @@
 										>
 											PDF
 										</div>
+
 										<div class="flex flex-col overflow-hidden">
 											<span
 												class="truncate text-sm leading-tight font-medium text-gray-700"
 												title={doc.name}>{doc.name}</span
 											>
-											{#if doc.status === 'uploaded'}
-												<span
-													class="flex items-center gap-1 text-[10px] font-medium text-green-600"
-												>
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														viewBox="0 0 20 20"
-														fill="currentColor"
-														class="h-3 w-3"
+
+											{#if !isEditing}
+												{#if studentData[doc.key]}
+													<span
+														class="flex items-center gap-1 text-[10px] font-medium text-green-600"
 													>
-														<path
-															fill-rule="evenodd"
-															d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-															clip-rule="evenodd"
-														/>
-													</svg>
-													Verified
-												</span>
+														<svg
+															xmlns="http://www.w3.org/2000/svg"
+															viewBox="0 0 20 20"
+															fill="currentColor"
+															class="h-3 w-3"
+														>
+															<path
+																fill-rule="evenodd"
+																d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+																clip-rule="evenodd"
+															/>
+														</svg>
+														Verified
+													</span>
+												{:else}
+													<span
+														class="flex items-center gap-1 text-[10px] font-medium text-gray-400"
+													>
+														Missing
+													</span>
+												{/if}
 											{/if}
 										</div>
 									</div>
 
 									<div class="flex items-center gap-1">
-										{#if doc.status === 'missing'}
-											<span
-												class="rounded bg-gray-100 px-2 py-1 text-[10px] font-bold tracking-wider text-gray-400 uppercase"
-												>Missing</span
-											>
-										{:else}
+										{#if isEditing}
+											<div class="flex items-center gap-2">
+												<span class="text-xs text-gray-500"
+													>{studentData[doc.key] ? 'Submitted' : 'Missing'}</span
+												>
+												<input
+													type="checkbox"
+													checked={!!studentData[doc.key]}
+													onchange={(e) => (studentData[doc.key] = e.target.checked ? 1 : 0)}
+													class="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+												/>
+											</div>
+										{:else if studentData[doc.key]}
 											<div
 												class="flex items-center opacity-0 transition-opacity group-hover:opacity-100"
 											>
-												<button
-													class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-green-600"
-													title="View"
-												>
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														fill="none"
-														viewBox="0 0 24 24"
-														stroke-width="2"
-														stroke="currentColor"
-														class="h-4 w-4"
-													>
-														<path
-															stroke-linecap="round"
-															stroke-linejoin="round"
-															d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-														/>
-													</svg>
-												</button>
 												<button
 													class="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-blue-600"
 													title="Download"
@@ -447,6 +631,11 @@
 													</svg>
 												</button>
 											</div>
+										{:else}
+											<span
+												class="rounded bg-gray-100 px-2 py-1 text-[10px] font-bold tracking-wider text-gray-400 uppercase"
+												>Missing</span
+											>
 										{/if}
 									</div>
 								</div>

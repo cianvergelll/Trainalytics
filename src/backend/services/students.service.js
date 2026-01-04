@@ -126,3 +126,34 @@ export async function getStudentByStudentId(studentId) {
     );
     return rows[0];
 }
+
+// Add to src/backend/services/students.service.js
+
+export async function updateStudent(studentId, data) {
+    // Define allowed columns to prevent SQL injection or overwriting restricted fields
+    const allowedFields = [
+        'StudentName', 'Section', 'Gender', 'BirthDate', 'Email', 'ContactNumber',
+        'CompanyName', 'CompanyAddress', 'SupervisorName', 'SupervisorContact', 'SupervisorEmail',
+        'AssignedDepartment', 'Position', 'StartDate', 'EndDate', 'TargetHours',
+        'HasMOA', 'HasEndorsement', 'HasWaiver', 'HasCompletion', 'HasEvaluation'
+    ];
+
+    const fields = [];
+    const values = [];
+
+    for (const [key, value] of Object.entries(data)) {
+        if (allowedFields.includes(key)) {
+            fields.push(`${key} = ?`);
+            values.push(value === '' ? null : value);
+        }
+    }
+
+    if (fields.length === 0) return false;
+
+    values.push(studentId);
+
+    const query = `UPDATE im_cec_students SET ${fields.join(', ')} WHERE StudentID = ?`;
+    const [result] = await pool.query(query, values);
+
+    return result.affectedRows > 0;
+}
