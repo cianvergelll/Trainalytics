@@ -9,7 +9,7 @@
 </script>
 
 {#if show && announcement}
-	<div class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-900">
+	<div class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-300/85">
 		<div class="w-full max-w-2xl rounded-lg bg-white p-8 shadow-xl">
 			<div class="mb-6 border-b pb-4">
 				<h2 class="text-2xl font-bold text-gray-800">{announcement.Title}</h2>

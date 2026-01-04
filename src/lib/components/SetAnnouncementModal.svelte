@@ -1,9 +1,7 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
-
-	let { show = false } = $props();
+	let { show = false, announcementToEdit = null } = $props();
 	let modalElement = $state();
-
 	let announcement = $state({
 		title: '',
 		description: '',
@@ -14,6 +12,23 @@
 		attachment: null
 	});
 
+	$effect(() => {
+		if (show && announcementToEdit) {
+			announcement.title = announcementToEdit.Title || '';
+			announcement.description = announcementToEdit.Description || '';
+		} else if (show && !announcementToEdit) {
+			announcement = {
+				title: '',
+				description: '',
+				startDate: '',
+				endDate: '',
+				startTime: '09:00',
+				endTime: '16:00',
+				attachment: null
+			};
+		}
+	});
+
 	const dispatch = createEventDispatcher();
 
 	function handleClose() {
@@ -22,7 +37,11 @@
 
 	function handleSubmit(event) {
 		event.preventDefault();
-		dispatch('set', { ...announcement });
+		if (announcementToEdit) {
+			dispatch('update', { id: announcementToEdit.ID, ...announcement });
+		} else {
+			dispatch('set', { ...announcement });
+		}
 		handleClose();
 	}
 
@@ -56,15 +75,17 @@
 {#if show}
 	<div
 		bind:this={modalElement}
-		class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-900"
+		class="bg-opacity-75 fixed inset-0 z-50 flex items-center justify-center bg-gray-300/85"
 	>
 		<div
-			class="w-full max-w-3xl rounded-lg border-4 border-green-200 bg-white p-8 shadow-xl"
+			class="w-full max-w-2xl rounded-lg border-4 border-green-200 bg-white p-6 shadow-xl"
 			role="dialog"
 		>
-			<h2 class="mb-8 text-center text-3xl font-bold text-gray-800">Set Announcement</h2>
+			<h2 class="mb-4 text-center text-2xl font-bold text-gray-800">
+				{announcementToEdit ? 'Edit Announcement' : 'Set Announcement'}
+			</h2>
 
-			<form onsubmit={handleSubmit} class="space-y-6">
+			<form onsubmit={handleSubmit} class="space-y-4">
 				<div>
 					<label for="title" class="block text-sm font-medium text-gray-700"
 						>Announcement Title</label
@@ -73,7 +94,7 @@
 						type="text"
 						id="title"
 						bind:value={announcement.title}
-						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
 						placeholder="Enter Announcement Title..."
 						required
 					/>
@@ -86,8 +107,8 @@
 					<textarea
 						id="description"
 						bind:value={announcement.description}
-						rows="4"
-						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+						rows="3"
+						class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
 						placeholder="Enter Announcement Description..."
 						required
 					></textarea>
@@ -95,17 +116,17 @@
 
 				<div>
 					<p class="block text-sm font-medium text-gray-700">When:</p>
-					<div class="mt-2 grid grid-cols-2 gap-x-6 gap-y-4">
+					<div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-3">
 						<fieldset>
 							<legend class="block text-xs font-medium text-gray-500">Date Range:</legend>
-							<div class="mt-1 grid grid-cols-2 gap-4">
+							<div class="mt-1 grid grid-cols-2 gap-2">
 								<div>
 									<label for="startDate" class="block text-xs text-gray-500">Start Date</label>
 									<input
 										type="date"
 										id="startDate"
 										bind:value={announcement.startDate}
-										class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+										class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-sm focus:border-green-500 focus:ring-green-500"
 										required
 									/>
 								</div>
@@ -115,7 +136,7 @@
 										type="date"
 										id="endDate"
 										bind:value={announcement.endDate}
-										class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+										class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-sm focus:border-green-500 focus:ring-green-500"
 										required
 									/>
 								</div>
@@ -124,14 +145,14 @@
 
 						<fieldset>
 							<legend class="block text-xs font-medium text-gray-500">Time:</legend>
-							<div class="mt-1 grid grid-cols-2 gap-4">
+							<div class="mt-1 grid grid-cols-2 gap-2">
 								<div>
 									<label for="startTime" class="block text-xs text-gray-500">From</label>
 									<input
 										type="time"
 										id="startTime"
 										bind:value={announcement.startTime}
-										class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+										class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-sm focus:border-green-500 focus:ring-green-500"
 										required
 									/>
 								</div>
@@ -141,7 +162,7 @@
 										type="time"
 										id="endTime"
 										bind:value={announcement.endTime}
-										class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+										class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-sm focus:border-green-500 focus:ring-green-500"
 										required
 									/>
 								</div>
@@ -158,7 +179,7 @@
 						role="button"
 						tabindex="0"
 						aria-label="File upload"
-						class="mt-1 flex justify-center rounded-md border-2 border-dashed border-gray-300 px-6 pt-5 pb-6"
+						class="mt-1 flex justify-center rounded-md border-2 border-dashed border-gray-300 px-4 py-4"
 						ondragover={(event) => {
 							event.preventDefault();
 							event.currentTarget.classList.add('border-green-500', 'bg-gray-50');
@@ -174,7 +195,7 @@
 					>
 						<div class="space-y-1 text-center">
 							<svg
-								class="mx-auto h-12 w-12 text-gray-400"
+								class="mx-auto h-8 w-8 text-gray-400"
 								stroke="currentColor"
 								fill="none"
 								viewBox="0 0 48 48"
@@ -186,7 +207,7 @@
 									stroke-linejoin="round"
 								/>
 							</svg>
-							<div class="flex text-sm text-gray-600">
+							<div class="flex justify-center text-sm text-gray-600">
 								<label
 									for="file-upload"
 									class="relative cursor-pointer rounded-md font-medium text-green-600 hover:text-green-500"
@@ -211,23 +232,23 @@
 					</div>
 				</div>
 
-				<div class="mt-8 flex justify-end gap-4 pt-4">
+				<div class="mt-4 flex justify-end gap-3 pt-2">
 					<button
 						type="button"
 						onclick={handleClose}
-						class="rounded-lg bg-gray-100 px-6 py-2 font-medium text-gray-700 hover:bg-gray-200"
+						class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
 						>Cancel</button
 					>
 					<button
 						type="submit"
-						class="flex items-center gap-2 rounded-lg bg-green-500 px-6 py-2 font-medium text-white hover:bg-green-600"
+						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
 					>
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+						<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
 							<path
 								d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
 							/>
 						</svg>
-						Set Announcement
+						{announcementToEdit ? 'Update' : 'Set Announcement'}
 					</button>
 				</div>
 			</form>
