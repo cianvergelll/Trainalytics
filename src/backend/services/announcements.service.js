@@ -17,7 +17,6 @@ function formatDateTime(dtString) {
 
 export async function getAnnouncementsPaginated(page = 1, limit = 10, searchTerm = '', filters = {}) {
     const offset = (page - 1) * limit;
-
     let baseQuery = `
         FROM im_system.im_cec_announcements AS ann
         LEFT JOIN im_system.im_admin_users AS admin ON ann.AdminID = admin.ID
@@ -25,12 +24,19 @@ export async function getAnnouncementsPaginated(page = 1, limit = 10, searchTerm
     `;
     const params = [];
 
+    console.log(`Fetching Announcements. Filter archived: ${filters.archived}`);
+
+    if (filters.archived === 'true' || filters.archived === true) {
+        baseQuery += ' AND ann.IsActive = 0';
+    } else {
+        baseQuery += ' AND ann.IsActive = 1';
+    }
+
     if (searchTerm) {
         baseQuery += ' AND (ann.Title LIKE ? OR ann.Description LIKE ?)';
         const searchQuery = `%${searchTerm}%`;
         params.push(searchQuery, searchQuery);
     }
-
 
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
 
@@ -39,10 +45,12 @@ export async function getAnnouncementsPaginated(page = 1, limit = 10, searchTerm
         SELECT 
             ann.ID,
             ann.Title,
+            ann.Description,
             admin.Username AS CreatedBy,
             ann.CreatedAt,
             ann.UpdatedAt AS LastModified,
-            ann.AttachmentPath
+            ann.AttachmentPath,
+            ann.IsActive
         ${baseQuery} 
         ORDER BY ann.CreatedAt DESC 
         LIMIT ? OFFSET ?
@@ -79,4 +87,24 @@ export async function createAnnouncement(data, adminId) {
     );
 
     return { id: result.insertId, ...data };
+}
+
+
+export async function updateAnnouncement(id, data) {
+    const { title, description, startDate, endDate } = data;
+    const [result] = await pool.query(
+        `UPDATE im_cec_announcements 
+         SET Title = ?, Description = ?, StartDate = ?, EndDate = ? 
+         WHERE ID = ?`,
+        [title, description, startDate, endDate, id]
+    );
+    return result.affectedRows > 0;
+}
+
+export async function toggleArchiveAnnouncement(id) {
+    const [result] = await pool.query(
+        'UPDATE im_cec_announcements SET IsActive = IF(IsActive=1, 0, 1) WHERE ID = ?',
+        [id]
+    );
+    return result.affectedRows > 0;
 }

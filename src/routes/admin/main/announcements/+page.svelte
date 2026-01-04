@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 	import SetAnnouncementModal from '$lib/components/SetAnnouncementModal.svelte';
+	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
+	import ViewAnnouncementModal from '$lib/components/ViewAnnouncementModal.svelte';
 
 	let announcements = $state([]);
 	let currentPage = $state(1);
@@ -10,23 +12,20 @@
 	let searchTerm = $state('');
 	let debounceTimer;
 	const limit = 10;
-
-	let showSetAnnouncementModal = $state(false);
 	let error = $state('');
+	let successMessage = $state('');
+
+	// Modal States
+	let showSetAnnouncementModal = $state(false);
+	let showViewModal = $state(false);
+	let showArchiveModal = $state(false);
+
+	let selectedAnnouncement = $state(null); // For View/Edit
+	let announcementToArchiveId = $state(null); // For Archive
 
 	async function fetchAnnouncements(page, search = '') {
 		const params = new URLSearchParams({ page, limit, search: search });
 		const queryString = params.toString();
-
-		const cacheKey = `announcements?${queryString}`;
-		const cachedData = sessionStorage.getItem(cacheKey);
-		if (cachedData) {
-			const data = JSON.parse(cachedData);
-			announcements = data.announcements;
-			currentPage = data.currentPage;
-			totalPages = data.totalPages;
-			return;
-		}
 
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -35,7 +34,6 @@
 			});
 
 			if (res.status === 401) {
-				sessionStorage.clear();
 				localStorage.removeItem('sessionToken');
 				goto('/login');
 				return;
@@ -46,21 +44,61 @@
 				announcements = data.announcements;
 				currentPage = data.currentPage;
 				totalPages = data.totalPages;
-				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
-				console.error('Failed to fetch announcements:', res.statusText);
-				error = 'You do not have permission to view announcements.';
+				error = 'Failed to fetch announcements.';
 			}
 		} catch (e) {
-			console.error('An error occurred:', e);
+			console.error(e);
 			error = 'An error occurred while fetching data.';
 		}
 	}
 
-	async function handleSetAnnouncement(event) {
-		const newAnnouncementData = event.detail;
-		error = '';
+	// 1. VIEW ACTION
+	function handleView(announcement) {
+		selectedAnnouncement = announcement;
+		showViewModal = true;
+	}
 
+	// 2. EDIT ACTION
+	function handleEdit(announcement) {
+		selectedAnnouncement = announcement; // Pass this to the SetModal to pre-fill
+		showSetAnnouncementModal = true;
+	}
+
+	// Handle the actual update logic (passed to modal)
+	async function handleUpdateAnnouncement(event) {
+		const { id, ...data } = event.detail;
+		// Remove attachment logic for now if not implemented
+		delete data.attachment;
+
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/announcements/${id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(data)
+			});
+
+			if (res.ok) {
+				showSetAnnouncementModal = false;
+				selectedAnnouncement = null;
+				successMessage = 'Announcement updated successfully.';
+				setTimeout(() => (successMessage = ''), 3000);
+				fetchAnnouncements(currentPage, searchTerm);
+			} else {
+				error = 'Failed to update announcement.';
+			}
+		} catch (e) {
+			error = 'Network error during update.';
+		}
+	}
+
+	async function handleSetAnnouncement(event) {
+		// Existing Create Logic...
+		const newAnnouncementData = event.detail;
 		const dataToSend = { ...newAnnouncementData };
 		delete dataToSend.attachment;
 
@@ -76,18 +114,45 @@
 			});
 
 			if (res.ok) {
-				console.log('Announcement set successfully');
 				showSetAnnouncementModal = false;
-				sessionStorage.clear();
 				fetchAnnouncements(1, searchTerm);
+				successMessage = 'Announcement created successfully.';
+				setTimeout(() => (successMessage = ''), 3000);
 			} else {
-				const err = await res.json();
-				console.error('Failed to set announcement:', err);
-				error = err.error || 'Failed to set announcement.';
+				error = 'Failed to set announcement.';
 			}
 		} catch (e) {
-			console.error('Error setting announcement:', e);
 			error = 'A network error occurred.';
+		}
+	}
+
+	// 3. ARCHIVE ACTION
+	function handleArchive(id) {
+		announcementToArchiveId = id;
+		showArchiveModal = true;
+	}
+
+	async function confirmArchive() {
+		if (!announcementToArchiveId) return;
+
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/announcements/${announcementToArchiveId}/archive`, {
+				method: 'PATCH',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (res.ok) {
+				showArchiveModal = false;
+				announcementToArchiveId = null;
+				successMessage = 'Announcement archived successfully.';
+				setTimeout(() => (successMessage = ''), 3000);
+				fetchAnnouncements(currentPage, searchTerm);
+			} else {
+				error = 'Failed to archive announcement.';
+			}
+		} catch (e) {
+			error = 'Network error during archive.';
 		}
 	}
 
@@ -98,7 +163,6 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			sessionStorage.clear();
 			fetchAnnouncements(1, searchTerm);
 		}, 300);
 	}
@@ -107,26 +171,36 @@
 		if (newPage < 1 || newPage > totalPages) return;
 		fetchAnnouncements(newPage, searchTerm);
 	}
-
-	async function handleLogout() {
-		sessionStorage.clear();
-		const token = localStorage.getItem('sessionToken');
-		if (token) {
-			localStorage.removeItem('sessionToken');
-			await fetch('/api/auth/logout', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ token })
-			});
-		}
-		goto('/login');
-	}
 </script>
+
+<ViewAnnouncementModal
+	show={showViewModal}
+	announcement={selectedAnnouncement}
+	on:close={() => {
+		showViewModal = false;
+		selectedAnnouncement = null;
+	}}
+/>
 
 <SetAnnouncementModal
 	show={showSetAnnouncementModal}
-	on:close={() => (showSetAnnouncementModal = false)}
+	announcementToEdit={selectedAnnouncement}
+	on:close={() => {
+		showSetAnnouncementModal = false;
+		selectedAnnouncement = null;
+	}}
 	on:set={handleSetAnnouncement}
+	on:update={handleUpdateAnnouncement}
+/>
+
+<ConfirmationModal
+	show={showArchiveModal}
+	title="Archive Announcement"
+	message="Are you sure you want to archive this announcement? It will be hidden from the main list."
+	confirmText="Archive"
+	confirmColor="red"
+	on:close={() => (showArchiveModal = false)}
+	on:confirm={confirmArchive}
 />
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
@@ -142,6 +216,11 @@
 
 		{#if error}
 			<p class="mb-4 w-full rounded bg-red-100 p-2 text-center text-sm text-red-700">{error}</p>
+		{/if}
+		{#if successMessage}
+			<p class="mb-4 w-full rounded bg-green-100 p-2 text-center text-sm text-green-700">
+				{successMessage}
+			</p>
 		{/if}
 
 		<div class="flex min-h-0 flex-grow flex-col">
@@ -165,24 +244,17 @@
 							</svg>
 						</div>
 					</div>
-					<button
-						class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
-					>
-						Filter By
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
-							/>
-						</svg>
-					</button>
 				</div>
 				<div class="flex items-center gap-4">
 					<button
+						onclick={() => goto('/admin/main/announcements/archived')}
 						class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 font-medium text-gray-700 hover:bg-gray-200"
-						>Archived Announcements</button
 					>
+						Archived Announcements
+					</button>
+
 					<button
-						onclick={() => (showSetAnnouncementModal = true)}
+						onclick={() => ((selectedAnnouncement = null), (showSetAnnouncementModal = true))}
 						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
 					>
 						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -217,33 +289,71 @@
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{ann.LastModified}</td
 								>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
-									<div class="flex items-center gap-3">
-										<button class="text-gray-500 hover:text-green-600" aria-label="View">
-											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-												<path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+									<div class="flex items-center gap-2">
+										<button
+											onclick={() => handleView(ann)}
+											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
+											title="View Announcement"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="2"
+												stroke="currentColor"
+												class="size-5"
+											>
 												<path
-													fill-rule="evenodd"
-													d="M.664 10.59a1.651 1.651 0 010-1.18l.879-1.148a1.651 1.651 0 011.087-.582l1.649-.033a1.651 1.651 0 011.53.86l.635 1.27a1.651 1.651 0 001.53.861l1.65-.033a1.651 1.651 0 001.086-.582l.88-1.148a1.651 1.651 0 000-1.18l-.88-1.147a1.651 1.651 0 00-1.086-.583l-1.65.033a1.651 1.651 0 00-1.53-.86l-.635-1.27a1.651 1.651 0 01-1.53-.86L6.22.842a1.651 1.651 0 01-1.087-.582L4.254.113a1.651 1.651 0 010 1.181l.88 1.147c.224.292.36.66.36 1.052v1.274c.36.36.36.36.36.36v-1.274a1.651 1.651 0 01-.36-1.052l-.88-1.148a1.651 1.651 0 01-1.086-.582l-1.65-.033a1.651 1.651 0 01-1.53-.86l-.635-1.27a1.651 1.651 0 00-1.53-.86L.842 6.22a1.651 1.651 0 00-1.087.582L-.394 7.948a1.651 1.651 0 000 1.181l.394 1.147c.224.292.36.66.36 1.052v1.274a1.651 1.651 0 00.36 1.052l.88 1.148zM10 15a5 5 0 100-10 5 5 0 000 10z"
-													clip-rule="evenodd"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+												/>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
 												/>
 											</svg>
 										</button>
-										<button class="text-gray-500 hover:text-blue-600" aria-label="Edit">
-											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+
+										<button
+											onclick={() => handleEdit(ann)}
+											class="text-indigo-900 transition-colors duration-200 hover:text-indigo-700"
+											title="Edit Announcement"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="2"
+												stroke="currentColor"
+												class="size-5"
+											>
 												<path
-													d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z"
-												/>
-												<path
-													d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
 												/>
 											</svg>
 										</button>
-										<button class="text-gray-500 hover:text-red-600" aria-label="Delete">
-											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+
+										<button
+											onclick={() => handleArchive(ann.ID)}
+											class="text-red-600 transition-colors duration-200 hover:text-red-800"
+											title="Archive Announcement"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="2"
+												stroke="currentColor"
+												class="h-5 w-5"
+											>
 												<path
-													fill-rule="evenodd"
-													d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193v-.443A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25-.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-													clip-rule="evenodd"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
 												/>
 											</svg>
 										</button>
