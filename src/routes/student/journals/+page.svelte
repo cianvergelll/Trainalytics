@@ -342,15 +342,18 @@
 										{journal.Description || ''}
 									</td>
 									<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
-										{journal.DateApproved
-											? new Date(journal.DateApproved).toLocaleDateString()
-											: '-'}
+										{#if journal.DateApproved && journal.Status?.toLowerCase() === 'approved'}
+											{new Date(journal.DateApproved).toLocaleDateString()}
+										{:else}
+											<span class="text-gray-400">N/A</span>
+										{/if}
 									</td>
 									<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
 										<div class="flex items-center gap-2">
 											<button
-												class="text-blue-700 transition-colors duration-200 hover:text-blue-900"
-												title="View Details"
+												aria-label="View Journal"
+												onclick={() => goto(`/student/journals/view?id=${journal.ID}`)}
+												class="text-blue-600 hover:text-blue-800"
 											>
 												<svg
 													xmlns="http://www.w3.org/2000/svg"

@@ -42,18 +42,27 @@ export async function addJournal(req, res) {
 export async function getJournalDetails(req, res) {
     try {
         const { id } = req.params;
+        const user = req.user;
 
         const journal = await journalsService.getJournalById(id);
 
         if (!journal) {
-            console.log("Journal not found in DB");
             return res.status(404).json({ error: 'Journal not found' });
+        }
+
+        if (user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            const studentIdFromSession = rows[0]?.Extra1;
+
+            if (journal.studentId !== studentIdFromSession) {
+                return res.status(403).json({ error: 'Access Denied: You can only view your own journals.' });
+            }
         }
 
         res.json(journal);
     } catch (err) {
-        console.error('Controller Error - Failed to get journal details:', err);
-        res.status(500).json({ error: 'Server error fetching details: ' + err.message });
+        console.error('Error in getJournalDetails:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 }
 

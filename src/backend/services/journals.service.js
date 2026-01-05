@@ -122,7 +122,8 @@ export async function getJournalById(journalId) {
                 j.Reflection3,
                 s.StudentName, 
                 s.CompanyName,
-                s.SupervisorName  -- <--- Selecting this now
+                s.SupervisorName,
+                s.StudentID as linkedStudentId
              FROM im_system.im_cec_journal j
              LEFT JOIN im_system.im_cec_students s ON j.StudentID = s.StudentID
              WHERE j.ID = ?`,
@@ -140,6 +141,7 @@ export async function getJournalById(journalId) {
 
         return {
             ID: journal.ID,
+            studentId: journal.linkedStudentId,
             studentName: journal.StudentName || 'Unknown',
             company: journal.CompanyName || 'N/A',
             supervisor: journal.SupervisorName || 'N/A',

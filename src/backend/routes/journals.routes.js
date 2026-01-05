@@ -9,7 +9,7 @@ router.post('/', protect, isAdmin, addJournal);
 
 router.get('/student/:id', protect, getStudentJournals);
 
-router.get('/:id', protect, isAdmin, getJournalDetails);
+router.get('/:id', protect, getJournalDetails);
 router.post('/:id/feedback', protect, isAdmin, submitFeedback);
 
 export default router;
