@@ -159,59 +159,41 @@ export async function getJournalById(journalId) {
     }
 }
 
-export async function getStudentJournalLogs(studentId, page = 1, limit = 10) {
+export async function getStudentJournalLogs(studentId, page = 1, limit = 10, search = '', status = '') {
     const offset = (page - 1) * limit;
+    let query = `
+        SELECT ID, Date, Title, Description, Status, DateApproved 
+        FROM im_cec_journal 
+        WHERE StudentID = ?
+    `;
+    const params = [studentId];
 
-    const [studentRows] = await pool.query(
-        `SELECT StudentName, StudentID, CompanyName, SupervisorName, TargetHours, IsActive 
-         FROM im_cec_students 
-         WHERE StudentID = ?`,
-        [studentId]
+    if (search) {
+        query += ` AND (Title LIKE ? OR Description LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (status) {
+        const statuses = status.split(',');
+        query += ` AND Status IN (?)`;
+        params.push(statuses);
+    }
+
+    const [countResult] = await pool.query(
+        `SELECT COUNT(*) as total FROM (${query}) as sub`,
+        params
     );
+    const total = countResult[0].total;
 
-    if (studentRows.length === 0) return null;
-    const student = studentRows[0];
+    query += ` ORDER BY Date DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
 
-    const [[{ totalRendered }]] = await pool.query(
-        `SELECT SUM(HoursRendered) as totalRendered FROM im_cec_attendance WHERE StudentID = ?`,
-        [studentId]
-    );
-    const rendered = parseFloat(totalRendered || 0);
-    const remaining = Math.max(0, parseFloat(student.TargetHours) - rendered);
-
-    const [[{ totalRecords }]] = await pool.query(
-        `SELECT COUNT(*) as totalRecords FROM im_cec_journal WHERE StudentID = ?`,
-        [studentId]
-    );
-
-    const [journals] = await pool.query(
-        `SELECT ID, Date, Status, DateApproved 
-         FROM im_cec_journal 
-         WHERE StudentID = ? 
-         ORDER BY Date DESC 
-         LIMIT ? OFFSET ?`,
-        [studentId, limit, offset]
-    );
-
-    const formattedJournals = journals.map((j) => ({
-        ID: j.ID,
-        Date: formatDateIntl(j.Date),
-        Status: j.Status,
-        DateApproved: formatDateIntl(j.DateApproved)
-    }));
+    const [logs] = await pool.query(query, params);
 
     return {
-        student: {
-            name: student.StudentName,
-            studentId: student.StudentID,
-            company: student.CompanyName || 'N/A',
-            supervisor: student.SupervisorName || 'N/A',
-            targetHours: student.TargetHours,
-            totalRendered: rendered.toFixed(2),
-            remainingHours: remaining.toFixed(2),
-            isActive: student.IsActive
-        },
-        logs: formattedJournals,
-        total: totalRecords
+        logs,
+        total,
+        currentPage: page,
+        totalPages: Math.ceil(total / limit)
     };
 }

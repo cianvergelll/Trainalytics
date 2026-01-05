@@ -1,4 +1,5 @@
 import * as journalsService from '../services/journals.service.js';
+import { pool } from '../../config/db.js';
 
 export async function getJournals(req, res) {
     try {
@@ -77,24 +78,27 @@ export async function submitFeedback(req, res) {
 
 export async function getStudentJournals(req, res) {
     try {
-        const { id } = req.params;
-        const page = parseInt(req.query.page || '1', 10);
-        const limit = parseInt(req.query.limit || '10', 10);
+        const studentId = req.params.id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search || '';
+        const status = req.query.status || '';
 
-        const result = await journalsService.getStudentJournalLogs(id, page, limit);
+        const user = req.user;
 
-        if (!result) {
-            return res.status(404).json({ error: 'Student not found.' });
+        if (user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+
+            if (rows.length === 0 || rows[0].Extra1 !== studentId) {
+                return res.status(403).json({ error: 'Forbidden: You can only view your own journals.' });
+            }
         }
 
-        res.json({
-            student: result.student,
-            logs: result.logs,
-            totalPages: Math.ceil(result.total / limit),
-            currentPage: page
-        });
+        const data = await journalsService.getStudentJournalLogs(studentId, page, limit, search, status);
+
+        res.json(data);
     } catch (err) {
-        console.error('Failed to get student journal logs:', err);
-        res.status(500).json({ error: 'Server error fetching student journals.' });
+        console.error('Error fetching student journals:', err);
+        res.status(500).json({ error: 'Server error fetching journals.' });
     }
 }

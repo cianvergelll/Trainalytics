@@ -183,7 +183,7 @@
 			</a>
 
 			<a
-				href="/student/journal"
+				href="/student/journals"
 				class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow transition-colors hover:bg-green-600"
 			>
 				<svg

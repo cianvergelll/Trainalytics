@@ -6,6 +6,6 @@ const router = Router();
 
 router.get('/', protect, isAdmin, getAttendances);
 router.post('/', protect, isAdmin, addAttendance);
-router.get('/student/:id', protect, isAdmin, getStudentAttendance);
+router.get('/student/:id', protect, getStudentAttendance);
 
 export default router;

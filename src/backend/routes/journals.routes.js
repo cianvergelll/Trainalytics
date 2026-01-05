@@ -7,7 +7,7 @@ const router = Router();
 router.get('/', protect, isAdmin, getJournals);
 router.post('/', protect, isAdmin, addJournal);
 
-router.get('/student/:id', protect, isAdmin, getStudentJournals);
+router.get('/student/:id', protect, getStudentJournals);
 
 router.get('/:id', protect, isAdmin, getJournalDetails);
 router.post('/:id/feedback', protect, isAdmin, submitFeedback);
