@@ -1,4 +1,5 @@
 import * as studentsService from '../services/students.service.js';
+import { pool } from '../../config/db.js';
 
 export async function getStudents(req, res) {
     try {
@@ -158,16 +159,49 @@ export async function getStudentProfile(req, res) {
     }
 }
 
-// Add to src/backend/controllers/students.controller.js
 
 export async function updateStudentDetails(req, res) {
     try {
         const { id } = req.params;
         const updates = req.body;
+        const user = req.user;
 
+        if (user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+
+            if (rows.length === 0 || rows[0].Extra1 !== id) {
+                return res.status(403).json({ error: 'Forbidden: You can only update your own profile.' });
+            }
+
+            const allowedPersonalFields = [
+                'StudentName',
+                'Gender',
+                'BirthDate',
+                'Section',
+                'Email',
+                'ContactNumber'
+            ];
+
+            const filteredUpdates = {};
+            Object.keys(updates).forEach(key => {
+                if (allowedPersonalFields.includes(key)) {
+                    filteredUpdates[key] = updates[key];
+                }
+            });
+
+            if (Object.keys(filteredUpdates).length === 0) {
+                return res.json({ message: 'No valid personal details to update.' });
+            }
+
+            const success = await studentsService.updateStudent(id, filteredUpdates);
+
+            if (!success) {
+                return res.json({ message: 'Update failed or no changes detected.' });
+            }
+            return res.json({ message: 'Personal details updated successfully.' });
+        }
 
         const success = await studentsService.updateStudent(id, updates);
-
         if (!success) {
             return res.json({ message: 'No changes detected or update failed.' });
         }

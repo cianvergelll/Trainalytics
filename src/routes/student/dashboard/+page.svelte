@@ -3,24 +3,21 @@
 	import { goto } from '$app/navigation';
 	import SideNav from '$lib/components/SideNav.svelte';
 
-	// --- State for Student Data ---
 	let student = $state({
 		StudentName: '',
-		RenderedHours: 0,
+		TotalHours: 0,
+		RemainingHours: 0,
 		TargetHours: 0
 	});
 	let loading = $state(true);
 
-	// --- Clock Logic ---
 	let currentTime = $state(new Date());
 	let clockInterval;
 
-	// --- Calendar Logic ---
 	let today = new Date();
 	let currentMonth = $state(today.getMonth());
 	let currentYear = $state(today.getFullYear());
 
-	// --- Fetch Data Function (Same as Profile) ---
 	async function fetchDashboardData() {
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -29,7 +26,6 @@
 				return;
 			}
 
-			// 1. Get the linked Student ID
 			const authRes = await fetch(`/api/auth/me?t=${new Date().getTime()}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
@@ -38,24 +34,22 @@
 			const authData = await authRes.json();
 
 			const myStudentId = authData.studentId;
-
 			if (!myStudentId) {
 				console.error('No student ID linked');
 				loading = false;
 				return;
 			}
 
-			// 2. Fetch Student Details (Name, Hours)
 			const studentRes = await fetch(`/api/students/${myStudentId}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
 			if (studentRes.ok) {
 				const data = await studentRes.json();
-				// Ensure numbers are treated as numbers (handle nulls)
 				student = {
 					...data,
-					RenderedHours: Number(data.RenderedHours) || 0,
+					TotalHours: Number(data.TotalHours) || 0,
+					RemainingHours: Number(data.RemainingHours) || 0,
 					TargetHours: Number(data.TargetHours) || 0
 				};
 			}
@@ -66,7 +60,6 @@
 		}
 	}
 
-	// --- Calendar Helpers ---
 	function getMonthName(monthIndex) {
 		const monthNames = [
 			'January',
@@ -115,7 +108,6 @@
 			.concat(Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1))
 	);
 
-	// --- Lifecycle ---
 	onMount(() => {
 		fetchDashboardData();
 		clockInterval = setInterval(() => {
@@ -218,13 +210,13 @@
 					<div class="rounded-lg border border-green-100 bg-green-50 p-5">
 						<p class="text-xs font-bold tracking-wide text-gray-500 uppercase">Hours Rendered</p>
 						<h2 class="mt-2 text-4xl font-bold text-green-700">
-							{loading ? '...' : student.RenderedHours}
+							{loading ? '...' : student.TotalHours}
 						</h2>
 					</div>
 					<div class="rounded-lg border border-blue-100 bg-blue-50 p-5">
 						<p class="text-xs font-bold tracking-wide text-gray-500 uppercase">Remaining Hours</p>
 						<h2 class="mt-2 text-4xl font-bold text-blue-700">
-							{loading ? '...' : Math.max(0, student.TargetHours - student.RenderedHours)}
+							{loading ? '...' : student.RemainingHours}
 						</h2>
 					</div>
 				</div>

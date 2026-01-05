@@ -7,6 +7,6 @@ router.get('/', protect, getStudents);
 router.post('/', protect, isAdmin, addStudent);
 router.patch('/:id/archive', protect, isAdmin, toggleArchiveStudent);
 router.get('/:id', protect, getStudentProfile);
-router.put('/:id', protect, isAdmin, updateStudentDetails);
+router.put('/:id', protect, updateStudentDetails);
 
 export default router;
