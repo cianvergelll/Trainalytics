@@ -98,7 +98,6 @@ export async function createJournal(data, adminId) {
     return { id: result.insertId, ...data };
 }
 
-// NEW FUNCTION ADDED BELOW
 export async function addJournalFeedback(journalId, adminId, message) {
     const [result] = await pool.query(
         `INSERT INTO im_system.im_cec_journal_feedback 
@@ -160,6 +159,37 @@ export async function getJournalById(journalId) {
 }
 
 export async function getStudentJournalLogs(studentId, page = 1, limit = 10, search = '', status = '') {
+    const [studentRows] = await pool.query(
+        `SELECT StudentName, StudentID, CompanyName, SupervisorName, TargetHours, IsActive 
+         FROM im_cec_students 
+         WHERE StudentID = ?`,
+        [studentId]
+    );
+
+    let student = null;
+    if (studentRows.length > 0) {
+        const s = studentRows[0];
+
+        const [[{ totalRendered }]] = await pool.query(
+            `SELECT SUM(HoursRendered) as totalRendered FROM im_cec_attendance WHERE StudentID = ?`,
+            [studentId]
+        );
+
+        const rendered = parseFloat(totalRendered || 0);
+        const target = parseFloat(s.TargetHours || 0);
+
+        student = {
+            name: s.StudentName,
+            studentId: s.StudentID,
+            company: s.CompanyName || 'N/A',
+            supervisor: s.SupervisorName || 'N/A',
+            targetHours: target,
+            totalRendered: rendered.toFixed(2),
+            remainingHours: Math.max(0, target - rendered).toFixed(2),
+            isActive: s.IsActive
+        };
+    }
+
     const offset = (page - 1) * limit;
     let query = `
         SELECT ID, Date, Title, Description, Status, DateApproved 
@@ -190,8 +220,15 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
 
     const [logs] = await pool.query(query, params);
 
+    const formattedLogs = logs.map((log) => ({
+        ...log,
+        Date: formatDateIntl(log.Date),
+        DateApproved: formatDateIntl(log.DateApproved)
+    }));
+
     return {
-        logs,
+        student,
+        logs: formattedLogs,
         total,
         currentPage: page,
         totalPages: Math.ceil(total / limit)
