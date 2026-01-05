@@ -25,10 +25,10 @@ export async function getStudentsPaginated(page = 1, limit = 10, searchTerm = ''
             statusConditions.push('(IsActive = 1 AND TargetHours = 0)');
         }
         if (filters.status.includes('On-going')) {
-            statusConditions.push('(IsCompleted = 0 AND IsActive = 1 AND TargetHours > 0)');
+            statusConditions.push('(IsActive = 1 AND TargetHours > 0)');
         }
         if (filters.status.includes('Completed')) {
-            statusConditions.push('(IsCompleted = 1 AND IsActive = 0)');
+            statusConditions.push('(IsCompleted = 1)');
         }
         if (filters.status.includes('None')) {
             statusConditions.push('(IsActive = 0 AND IsCompleted = 0)');
@@ -48,13 +48,22 @@ export async function getStudentsPaginated(page = 1, limit = 10, searchTerm = ''
         baseQuery += ' AND CompanyName IN (?)';
         params.push(filters.companies);
     }
+
     if (filters.sections && filters.sections.length > 0) {
         baseQuery += ' AND Section IN (?)';
         params.push(filters.sections);
     }
 
     const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
-    const [students] = await pool.query(`SELECT StudentID, StudentName, Section, CompanyName, TargetHours, IsCompleted, IsActive, IsArchived ${baseQuery} ORDER BY StudentName ASC LIMIT ? OFFSET ?`, [...params, limit, offset]);
+
+    const [students] = await pool.query(
+        `SELECT StudentID, StudentName, Section, CompanyName, TargetHours, IsCompleted, IsActive, IsArchived 
+         ${baseQuery} 
+         ORDER BY StudentName ASC 
+         LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+    );
+
     return { students, total };
 }
 
@@ -82,6 +91,7 @@ export async function createStudent(studentData) {
             'INSERT INTO im_users (Username, Password, IsDeleted, Extra1) VALUES (?, ?, 0, ?)',
             [username, hashedPassword, studentId]
         );
+
         const studentName = `${firstName} ${lastName}`;
         const departmentId = 'BSIT';
         const isActive = 1;
@@ -101,6 +111,7 @@ export async function createStudent(studentData) {
                 'None'
             ]
         );
+
         await conn.commit();
         return { success: true, userId: userResult.insertId, studentId: studentResult.insertId };
     } catch (err) {
@@ -127,10 +138,7 @@ export async function getStudentByStudentId(studentId) {
     return rows[0];
 }
 
-// Add to src/backend/services/students.service.js
-
 export async function updateStudent(studentId, data) {
-    // Define allowed columns to prevent SQL injection or overwriting restricted fields
     const allowedFields = [
         'StudentName', 'Section', 'Gender', 'BirthDate', 'Email', 'ContactNumber',
         'CompanyName', 'CompanyAddress', 'SupervisorName', 'SupervisorContact', 'SupervisorEmail',
