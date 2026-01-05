@@ -24,17 +24,35 @@ export async function getJournals(req, res) {
 
 export async function addJournal(req, res) {
     try {
-        const adminId = req.user.id;
-        const journalData = req.body;
+        const user = req.user;
+        const { title, description, date, q1, q2, q3 } = req.body;
 
-        if (!journalData.studentId || !journalData.title || !journalData.date) {
-            return res.status(400).json({ error: 'StudentID, Title, and Date are required.' });
+        let studentId;
+
+        if (user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            studentId = rows[0]?.Extra1;
+        } else {
+            studentId = req.body.studentId;
         }
 
-        const newJournal = await journalsService.createJournal(journalData, adminId);
+        if (!studentId) {
+            return res.status(400).json({ error: 'Student profile not found for this account.' });
+        }
+
+        const newJournal = await journalsService.createJournal({
+            studentId,
+            title,
+            description,
+            date,
+            q1,
+            q2,
+            q3
+        });
+
         res.status(201).json(newJournal);
     } catch (err) {
-        console.error('Failed to create journal:', err);
+        console.error('Add Journal Error:', err);
         res.status(500).json({ error: 'Server error while creating journal.' });
     }
 }

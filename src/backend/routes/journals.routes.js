@@ -5,7 +5,7 @@ import { protect, isAdmin } from '../middleware/auth.middleware.js';
 const router = Router();
 
 router.get('/', protect, isAdmin, getJournals);
-router.post('/', protect, isAdmin, addJournal);
+router.post('/', protect, addJournal);
 
 router.get('/student/:id', protect, getStudentJournals);
 

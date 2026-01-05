@@ -83,29 +83,26 @@ export async function getJournalsPaginated(page = 1, limit = 10, searchTerm = ''
     return { journals: formattedJournals, total };
 }
 
-export async function createJournal(data, adminId) {
-    const { studentId, title, description, date } = data;
-    if (!adminId) throw new Error('Admin privileges required.');
+export async function createJournal(data) {
+    const { studentId, title, description, date, q1, q2, q3 } = data;
+
+    const [studentRows] = await pool.query(
+        'SELECT SchoolID, DepartmentID FROM im_cec_students WHERE StudentID = ?',
+        [studentId]
+    );
+
+    const schoolID = studentRows[0]?.SchoolID || 'CEC';
+    const deptID = studentRows[0]?.DepartmentID || 'IT';
 
     const [result] = await pool.query(
-        `
-        INSERT INTO im_system.im_cec_journal
-        (StudentID, SchoolID, DepartmentID, Date, Title, Description, Status)
-        VALUES (?, 'CEC', 'IT', ?, ?, ?, 'approved') 
-    `,
-        [studentId, date, title, description]
+        `INSERT INTO im_cec_journal 
+        (StudentID, SchoolID, DepartmentID, Date, Title, Description, 
+         Reflection1, Reflection2, Reflection3, Status, Attachment, DateApproved) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NULL, NULL)`,
+        [studentId, schoolID, deptID, date, title, description, q1, q2, q3]
     );
+
     return { id: result.insertId, ...data };
-}
-
-export async function addJournalFeedback(journalId, adminId, message) {
-    const [result] = await pool.query(
-        `INSERT INTO im_system.im_cec_journal_feedback 
-        (JournalID, AdminID, Message) 
-        VALUES (?, ?, ?)`,
-        [journalId, adminId, message]
-    );
-    return result.insertId;
 }
 
 export async function getJournalById(journalId) {
@@ -123,7 +120,7 @@ export async function getJournalById(journalId) {
                 s.StudentName, 
                 s.CompanyName,
                 s.SupervisorName,
-                s.StudentID as linkedStudentId
+                s.StudentID as studentId -- Added for the security check
              FROM im_system.im_cec_journal j
              LEFT JOIN im_system.im_cec_students s ON j.StudentID = s.StudentID
              WHERE j.ID = ?`,
@@ -136,12 +133,14 @@ export async function getJournalById(journalId) {
 
         const formatDate = (d) => {
             if (!d) return 'N/A';
-            return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            return new Date(d).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
+            });
         };
 
         return {
             ID: journal.ID,
-            studentId: journal.linkedStudentId,
+            studentId: journal.studentId,
             studentName: journal.StudentName || 'Unknown',
             company: journal.CompanyName || 'N/A',
             supervisor: journal.SupervisorName || 'N/A',
