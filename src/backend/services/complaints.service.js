@@ -1,23 +1,22 @@
 import { pool } from '../../config/db.js';
 
-function formatDateIntl(dtString) {
-    if (!dtString) return 'N/A';
+function formatDateIntl(dt) {
+    if (!dt) return 'N/A';
     try {
-        const dt = new Date(dtString.includes('T') ? dtString : dtString + 'T00:00:00');
-        if (isNaN(dt.getTime())) {
+        const dateObj = new Date(dt);
+        if (isNaN(dateObj.getTime())) {
             throw new Error('Invalid date value');
         }
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Intl.DateTimeFormat('en-US', options).format(dt);
+        return new Intl.DateTimeFormat('en-US', options).format(dateObj);
     } catch (e) {
-        console.error(`Error formatting date '${dtString}':`, e);
+        console.error(`Error formatting date:`, e);
         return 'Invalid Date';
     }
 }
 
 export async function getComplaintsPaginated(page = 1, limit = 10, searchTerm = '', filters = {}) {
     const offset = (page - 1) * limit;
-
     let baseQuery = `
         FROM im_system.im_cec_complaints AS comp
         LEFT JOIN im_system.im_cec_students AS std ON comp.StudentID = std.StudentID
@@ -39,6 +38,7 @@ export async function getComplaintsPaginated(page = 1, limit = 10, searchTerm = 
         SELECT
             comp.ID,
             comp.Title,
+            comp.Description, 
             comp.Date,
             comp.Status,
             std.StudentName AS StudentName,
@@ -57,6 +57,7 @@ export async function getComplaintsPaginated(page = 1, limit = 10, searchTerm = 
         Section: comp.Section || 'N/A',
         Company: comp.CompanyName || 'N/A',
         Concern: comp.Title,
+        Description: comp.Description,
         Date: formatDateIntl(comp.Date),
         Status: comp.Status,
     }));

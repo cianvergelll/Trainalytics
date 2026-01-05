@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
+	import ViewComplaintModal from '$lib/components/ViewComplaintModal.svelte';
 
 	let complaints = $state([]);
 	let currentPage = $state(1);
@@ -12,6 +13,9 @@
 
 	let error = $state('');
 	let successMessage = $state('');
+
+	let showViewModal = $state(false);
+	let selectedComplaint = $state(null);
 
 	function getStatusClasses(status) {
 		switch (status) {
@@ -118,6 +122,11 @@
 			console.error('Error updating status:', e);
 			error = 'A network error occurred while updating status.';
 		}
+	}
+
+	function handleView(complaint) {
+		selectedComplaint = complaint;
+		showViewModal = true;
 	}
 
 	onMount(() => {
@@ -243,13 +252,28 @@
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-3">
-										<button class="text-gray-500 hover:text-green-600" aria-label="View Details">
-											<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-												<path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+										<button
+											onclick={() => handleView(comp)}
+											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
+											title="View Details"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="2"
+												stroke="currentColor"
+												class="size-5"
+											>
 												<path
-													fill-rule="evenodd"
-													d="M.664 10.59a1.651 1.651 0 010-1.18l.879-1.148a1.651 1.651 0 011.087-.582l1.649-.033a1.651 1.651 0 011.53.86l.635 1.27a1.651 1.651 0 001.53.861l1.65-.033a1.651 1.651 0 001.086-.582l.88-1.148a1.651 1.651 0 000-1.18l-.88-1.147a1.651 1.651 0 00-1.086-.583l-1.65.033a1.651 1.651 0 00-1.53-.86l-.635-1.27a1.651 1.651 0 01-1.53-.86L6.22.842a1.651 1.651 0 01-1.087-.582L4.254.113a1.651 1.651 0 010 1.181l.88 1.147c.224.292.36.66.36 1.052v1.274c.36.36.36.36.36.36v-1.274a1.651 1.651 0 01-.36-1.052l-.88-1.148a1.651 1.651 0 01-1.086-.582l-1.65-.033a1.651 1.651 0 01-1.53-.86l-.635-1.27a1.651 1.651 0 00-1.53-.86L.842 6.22a1.651 1.651 0 00-1.087.582L-.394 7.948a1.651 1.651 0 000 1.181l.394 1.147c.224.292.36.66.36 1.052v1.274a1.651 1.651 0 00.36 1.052l.88 1.148zM10 15a5 5 0 100-10 5 5 0 000 10z"
-													clip-rule="evenodd"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+												/>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
 												/>
 											</svg>
 										</button>
@@ -296,4 +320,11 @@
 			</div>
 		</div>
 	</div>
+
+	<ViewComplaintModal
+		show={showViewModal}
+		complaint={selectedComplaint}
+		on:close={() => (showViewModal = false)}
+		on:updateStatus={(e) => handleStatusChange(e.detail.id, e.detail.status)}
+	/>
 </div>
