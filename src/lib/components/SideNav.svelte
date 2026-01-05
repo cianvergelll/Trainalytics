@@ -61,7 +61,7 @@
 			<a href="/notifications">Complains</a>
 		</li>
 		<li
-			class="mt-55 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
+			class="mt-40 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
 			<a href="foo">Settings</a>
 		</li>
