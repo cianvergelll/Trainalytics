@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import * as authService from '../services/auth.service.js';
+import { pool } from '../../config/db.js';
 
 export async function handleLogin(req, res) {
     try {
@@ -57,20 +58,35 @@ export async function handleVerifySession(req, res) {
 }
 
 export async function getCurrentUser(req, res) {
+    // 1. Basic Validation
     if (!req.user || !req.user.id || !req.user.role) {
         return res.status(401).json({ error: 'Not authorized or user data missing.' });
     }
+
     try {
         const tokenPayload = jwt.decode(req.headers.authorization.split(' ')[1]);
         if (!tokenPayload || !tokenPayload.userType) {
             return res.status(401).json({ error: 'User type missing from token.' });
         }
 
+        let studentId = null;
+        if (req.user.role === 'student') {
+            const [rows] = await pool.query(
+                'SELECT Extra1 FROM im_users WHERE ID = ?',
+                [req.user.id]
+            );
+
+            if (rows.length > 0) {
+                studentId = rows[0].Extra1;
+            }
+        }
+
         res.json({
             id: req.user.id,
             role: req.user.role,
             username: tokenPayload.username || 'N/A',
-            userType: tokenPayload.userType
+            userType: tokenPayload.userType,
+            studentId: studentId
         });
 
     } catch (err) {

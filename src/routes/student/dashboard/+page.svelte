@@ -1,8 +1,15 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
 	import SideNav from '$lib/components/SideNav.svelte';
 
-	const userName = 'Diana';
+	// --- State for Student Data ---
+	let student = $state({
+		StudentName: '',
+		RenderedHours: 0,
+		TargetHours: 0
+	});
+	let loading = $state(true);
 
 	// --- Clock Logic ---
 	let currentTime = $state(new Date());
@@ -13,6 +20,53 @@
 	let currentMonth = $state(today.getMonth());
 	let currentYear = $state(today.getFullYear());
 
+	// --- Fetch Data Function (Same as Profile) ---
+	async function fetchDashboardData() {
+		try {
+			const token = localStorage.getItem('sessionToken');
+			if (!token) {
+				goto('/login');
+				return;
+			}
+
+			// 1. Get the linked Student ID
+			const authRes = await fetch(`/api/auth/me?t=${new Date().getTime()}`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (!authRes.ok) throw new Error('Auth failed');
+			const authData = await authRes.json();
+
+			const myStudentId = authData.studentId;
+
+			if (!myStudentId) {
+				console.error('No student ID linked');
+				loading = false;
+				return;
+			}
+
+			// 2. Fetch Student Details (Name, Hours)
+			const studentRes = await fetch(`/api/students/${myStudentId}`, {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (studentRes.ok) {
+				const data = await studentRes.json();
+				// Ensure numbers are treated as numbers (handle nulls)
+				student = {
+					...data,
+					RenderedHours: Number(data.RenderedHours) || 0,
+					TargetHours: Number(data.TargetHours) || 0
+				};
+			}
+		} catch (e) {
+			console.error('Dashboard load error:', e);
+		} finally {
+			loading = false;
+		}
+	}
+
+	// --- Calendar Helpers ---
 	function getMonthName(monthIndex) {
 		const monthNames = [
 			'January',
@@ -61,7 +115,9 @@
 			.concat(Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1))
 	);
 
+	// --- Lifecycle ---
 	onMount(() => {
+		fetchDashboardData();
 		clockInterval = setInterval(() => {
 			currentTime = new Date();
 		}, 1000);
@@ -80,8 +136,14 @@
 	<div class="flex h-full flex-1 flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 			<div>
-				<h1 class="text-2xl font-bold text-gray-800">Welcome, {userName}!</h1>
-				<p class="text-sm text-gray-500">Here's your activity overview.</p>
+				{#if loading}
+					<div class="h-8 w-48 animate-pulse rounded bg-gray-200"></div>
+				{:else}
+					<h1 class="text-2xl font-bold text-gray-800">
+						Welcome, {student.StudentName || 'Student'}!
+					</h1>
+					<p class="text-sm text-gray-500">Here's your activity overview.</p>
+				{/if}
 			</div>
 		</div>
 
@@ -155,11 +217,15 @@
 				<div class="grid flex-shrink-0 grid-cols-2 gap-4">
 					<div class="rounded-lg border border-green-100 bg-green-50 p-5">
 						<p class="text-xs font-bold tracking-wide text-gray-500 uppercase">Hours Rendered</p>
-						<h2 class="mt-2 text-4xl font-bold text-green-700">280</h2>
+						<h2 class="mt-2 text-4xl font-bold text-green-700">
+							{loading ? '...' : student.RenderedHours}
+						</h2>
 					</div>
 					<div class="rounded-lg border border-blue-100 bg-blue-50 p-5">
 						<p class="text-xs font-bold tracking-wide text-gray-500 uppercase">Remaining Hours</p>
-						<h2 class="mt-2 text-4xl font-bold text-blue-700">20</h2>
+						<h2 class="mt-2 text-4xl font-bold text-blue-700">
+							{loading ? '...' : Math.max(0, student.TargetHours - student.RenderedHours)}
+						</h2>
 					</div>
 				</div>
 
