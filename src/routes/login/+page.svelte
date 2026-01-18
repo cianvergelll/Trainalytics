@@ -20,7 +20,6 @@
 				localStorage.setItem('sessionToken', data.token);
 
 				$userSession = { token: data.token, role: data.role, username: data.username };
-
 				switch (data.role) {
 					case 'SuperAdmin':
 						goto('/admin/superadmin/dashboard');
@@ -51,17 +50,17 @@
 </script>
 
 <title>Trainalytics Login</title>
-<div class="flex h-screen w-screen items-center justify-center bg-gray-100">
+<div class="flex min-h-screen w-full items-center justify-center bg-gray-100 p-4">
 	<div class="hidden flex-1 flex-col items-start justify-center md:flex">
 		<p
-			class="mb-5 bg-gradient-to-tr from-green-600 to-green-800 bg-clip-text pl-40 text-7xl font-bold text-transparent"
+			class="mb-5 bg-gradient-to-tr from-green-600 to-green-800 bg-clip-text pl-10 text-5xl font-bold text-transparent lg:pl-40 lg:text-7xl"
 		>
 			Trainalytics
 		</p>
-		<p class="pl-40 text-xl">Manage and track student internships effectively.</p>
+		<p class="pl-10 text-lg lg:pl-40 lg:text-xl">Manage and track student internships effectively.</p>
 	</div>
 
-	<div class="w-full max-w-md flex-shrink-0 p-8">
+	<div class="w-full max-w-md flex-shrink-0 p-4 md:p-8">
 		<div class="rounded-2xl bg-white p-8 shadow-2xl">
 			<p class="mb-5 text-left text-2xl font-bold">Log in to your account</p>
 			{#if error}
@@ -72,7 +71,7 @@
 					<input
 						bind:value={email}
 						type="text"
-						class="w-full rounded-lg border border-gray-400 py-2 pl-4"
+						class="w-full rounded-lg border border-gray-400 py-2 pl-4 focus:border-green-500 focus:outline-none"
 						placeholder="Username or Email"
 						required
 					/>
@@ -81,7 +80,7 @@
 					<input
 						bind:value={password}
 						type="password"
-						class="w-full rounded-lg border border-gray-400 py-2 pl-4"
+						class="w-full rounded-lg border border-gray-400 py-2 pl-4 focus:border-green-500 focus:outline-none"
 						placeholder="Password"
 						required
 					/>

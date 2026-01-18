@@ -1,4 +1,5 @@
 <script>
+    /* Retain your existing script code here, no changes needed to logic */
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
@@ -15,14 +16,12 @@
 
 	let showFilterDropdown = $state(false);
 	let filterButtonElement = $state();
-
 	let showAddStudentModal = $state(false);
 	let addStudentError = $state('');
 	let successMessage = $state('');
 
 	let showArchiveModal = $state(false);
 	let studentToArchiveId = $state(null);
-
 	let filterOptions = $state({ companies: [], sections: [] });
 	let selectedFilters = $state({
 		status: [],
@@ -62,7 +61,6 @@
 			const res = await fetch(`/api/students?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
-
 			if (res.status === 401) {
 				sessionStorage.clear();
 				localStorage.removeItem('sessionToken');
@@ -147,7 +145,6 @@
 				},
 				body: JSON.stringify(newStudentData)
 			});
-
 			if (res.ok) {
 				console.log('Student added successfully');
 				showAddStudentModal = false;
@@ -182,7 +179,6 @@
 				},
 				body: JSON.stringify({ archived: true })
 			});
-
 			if (res.ok) {
 				successMessage = 'Student archived successfully.';
 				setTimeout(() => (successMessage = ''), 3000);
@@ -212,7 +208,6 @@
 			fetchStudents(1, searchTerm, selectedFilters);
 		});
 	});
-
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
@@ -247,14 +242,14 @@
 	on:confirm={confirmArchive}
 />
 
-<div class="flex h-screen gap-4 bg-gray-50 p-4">
-	<div class="h-full w-1/5 flex-shrink-0">
+<div class="flex min-h-screen flex-col gap-4 bg-gray-50 p-4 md:h-screen md:flex-row md:overflow-hidden">
+	<div class="h-auto w-full flex-shrink-0 md:h-full md:w-64">
 		<SideNavAdmin />
 	</div>
 
-	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
+	<div class="flex flex-1 flex-col overflow-y-auto rounded-xl bg-white p-4 shadow-lg md:h-full md:p-8">
 		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-800">Student's Master List</h1>
+			<h1 class="text-2xl font-bold text-gray-800 md:text-3xl">Student's Master List</h1>
 			<p class="text-sm text-gray-500">Pages / Students / Student's Master List</p>
 		</div>
 
@@ -265,13 +260,13 @@
 		{/if}
 
 		<div class="flex min-h-0 flex-grow flex-col">
-			<div class="mb-4 flex items-center justify-between">
-				<div class="flex items-center gap-4">
-					<div class="relative">
+			<div class="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<div class="flex flex-wrap items-center gap-4">
+					<div class="relative w-full sm:w-auto">
 						<input
 							type="text"
 							placeholder="Search by Name or ID..."
-							class="w-64 rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-green-500 focus:outline-none"
+							class="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-10 focus:border-green-500 focus:outline-none sm:w-64"
 							bind:value={searchTerm}
 							oninput={onSearchInput}
 						/>
@@ -292,9 +287,7 @@
 							class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
 						>
 							<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-								<path
-									d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z"
-								/>
+								<path d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.59L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" />
 							</svg>
 							Filter By
 						</button>
@@ -310,7 +303,7 @@
 						{/if}
 					</div>
 				</div>
-				<div class="flex items-center gap-4">
+				<div class="flex flex-wrap items-center gap-4">
 					<button
 						onclick={() => goto('/admin/main/students/archived')}
 						class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 font-medium text-gray-700 hover:bg-gray-200"
@@ -321,16 +314,14 @@
 						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
 					>
 						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
-							/>
+							<path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
 						</svg>
 						Add Student
 					</button>
 				</div>
 			</div>
 
-			<div class="flex-grow overflow-auto">
+			<div class="flex-grow overflow-x-auto">
 				<table class="min-w-full table-auto text-left">
 					<thead class="sticky top-0 border-b bg-gray-50">
 						<tr>
@@ -346,161 +337,43 @@
 					<tbody class="divide-y">
 						{#each students as student (student.StudentID)}
 							<tr class="hover:bg-gray-50">
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
-									>{student.StudentID}</td
-								>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.StudentID}</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap">
 									{#if student.status === 'Completed'}
-										<span
-											class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800"
-											>{student.status}</span
-										>
+										<span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">{student.status}</span>
 									{:else if student.status === 'On-going'}
-										<span
-											class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800"
-											>{student.status}</span
-										>
+										<span class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">{student.status}</span>
 									{:else if student.status === 'Processing'}
-										<span
-											class="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800"
-											>{student.status}</span
-										>
+										<span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">{student.status}</span>
 									{:else}
-										<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
-											>{student.status}</span
-										>
+										<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">{student.status}</span>
 									{/if}
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-3">
-										<img
-											src={student.avatar}
-											alt={student.StudentName}
-											class="h-8 w-8 rounded-full object-cover"
-										/>
+										<img src={student.avatar} alt={student.StudentName} class="h-8 w-8 rounded-full object-cover" />
 										<span>{student.StudentName}</span>
 									</div>
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.section}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
-									>{student.TargetHours}</td
-								>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
-									>{student.CompanyName}</td
-								>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.TargetHours}</td>
+								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{student.CompanyName}</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
 									<div class="flex items-center gap-2">
-										<button
-											onclick={() => goto(`/admin/main/students/profile?id=${student.StudentID}`)}
-											class="text-blue-700 transition-colors duration-200 hover:text-blue-900"
-											aria-label="View Profile"
-											title="View Profile"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"
-												/>
-											</svg>
+										<button onclick={() => goto(`/admin/main/students/profile?id=${student.StudentID}`)} class="text-blue-700 hover:text-blue-900" title="View Profile">
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" /></svg>
 										</button>
-
-										<button
-											onclick={() =>
-												goto(`/admin/main/attendance/view?id=${student.StudentID}&from=students`)}
-											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
-											aria-label="View Attendance"
-											title="View Attendance"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3.75h.008v.008H6.75V15.75Zm0 3.75h.008v.008H6.75V19.5Z"
-												/>
-											</svg>
+										<button onclick={() => goto(`/admin/main/attendance/view?id=${student.StudentID}&from=students`)} class="text-emerald-700 hover:text-emerald-900" title="View Attendance">
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3.75h.008v.008H6.75V15.75Zm0 3.75h.008v.008H6.75V19.5Z" /></svg>
 										</button>
-
-										<button
-											onclick={() =>
-												goto(`/admin/main/journals/student?id=${student.StudentID}&from=students`)}
-											class="text-lime-600 transition-colors duration-200 hover:text-lime-800"
-											aria-label="View Journals"
-											title="View Journals"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2"
-												stroke="currentColor"
-												class="h-5 w-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 01-6 2.292m0-14.25v14.25"
-												/>
-											</svg>
+										<button onclick={() => goto(`/admin/main/journals/student?id=${student.StudentID}&from=students`)} class="text-lime-600 hover:text-lime-800" title="View Journals">
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 01-6 2.292m0-14.25v14.25" /></svg>
 										</button>
-
-										<button
-											onclick={() =>
-												goto(`/admin/main/students/profile?id=${student.StudentID}&edit=true`)}
-											class="text-indigo-900 transition-colors duration-200 hover:text-indigo-700"
-											aria-label="Edit Student"
-											title="Edit Student"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2"
-												stroke="currentColor"
-												class="size-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-												/>
-											</svg>
+										<button onclick={() => goto(`/admin/main/students/profile?id=${student.StudentID}&edit=true`)} class="text-indigo-900 hover:text-indigo-700" title="Edit Student">
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
 										</button>
-
-										<button
-											onclick={() => handleArchive(student.StudentID)}
-											class="text-red-600 transition-colors duration-200 hover:text-red-800"
-											aria-label="Archive Student"
-											title="Archive Student"
-										>
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke-width="2"
-												stroke="currentColor"
-												class="h-5 w-5"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-												/>
-											</svg>
+										<button onclick={() => handleArchive(student.StudentID)} class="text-red-600 hover:text-red-800" title="Archive Student">
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
 										</button>
 									</div>
 								</td>
@@ -512,28 +385,12 @@
 
 			<div class="mt-auto flex items-center justify-center pt-4">
 				<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-					<button
-						onclick={() => changePage(currentPage - 1)}
-						disabled={currentPage === 1}
-						class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
-						>Prev</button
-					>
+					<button onclick={() => changePage(currentPage - 1)} disabled={currentPage === 1} class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50">Prev</button>
 					{#each Array(totalPages) as _, i}
 						{@const page = i + 1}
-						<button
-							onclick={() => changePage(page)}
-							class:bg-green-500={currentPage === page}
-							class:text-white={currentPage === page}
-							class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-							>{page}</button
-						>
+						<button onclick={() => changePage(page)} class:bg-green-500={currentPage === page} class:text-white={currentPage === page} class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset hover:bg-gray-50">{page}</button>
 					{/each}
-					<button
-						onclick={() => changePage(currentPage + 1)}
-						disabled={currentPage === totalPages}
-						class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
-						>Next</button
-					>
+					<button onclick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50">Next</button>
 				</nav>
 			</div>
 		</div>

@@ -5,7 +5,6 @@
 
 	async function logout() {
 		const token = localStorage.getItem('sessionToken');
-
 		if (!token) {
 			goto('/login');
 			return;
@@ -29,7 +28,7 @@
 </script>
 
 <div class="flex h-full w-full flex-col rounded-2xl bg-white shadow-2xl">
-	<ul class="flex flex-col items-center justify-start space-y-2 p-4">
+	<ul class="flex h-full flex-col items-center justify-start space-y-2 p-4">
 		<li
 			class="mt-3 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
@@ -60,8 +59,9 @@
 		>
 			<a href="/notifications">Complains</a>
 		</li>
+		
 		<li
-			class="mt-40 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
+			class="mt-auto w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
 		>
 			<a href="foo">Settings</a>
 		</li>
