@@ -263,6 +263,9 @@
 			.fill(null)
 			.concat(Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1))
 	);
+	
+	let isDarkMode = $state(false); 
+    function toggleTheme() { isDarkMode = !isDarkMode; }
 </script>
 
 <svelte:head>
