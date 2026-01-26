@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getJournals, addJournal, submitFeedback, getJournalDetails, getStudentJournals, editJournal } from '../controllers/journals.controller.js';
+import { getJournals, addJournal, submitFeedback, getJournalDetails, getStudentJournals, editJournal, archiveJournal } from '../controllers/journals.controller.js';
 import { protect, isAdmin } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -14,4 +14,5 @@ router.post('/:id/feedback', protect, submitFeedback);
 
 router.put('/:id', protect, editJournal);
 
+router.put('/:id/archive', protect, archiveJournal);
 export default router;

@@ -21,8 +21,10 @@
 	let filterButtonElement = $state();
 	let showAddJournalModal = $state(false);
 	let successMessage = $state('');
+
 	let showArchiveModal = $state(false);
 	let journalToArchiveId = $state(null);
+	let showArchived = $state(false);
 
 	let selectedJournal = $state(null);
 
@@ -77,7 +79,8 @@
 			const params = new URLSearchParams({
 				page: page.toString(),
 				limit: limit.toString(),
-				search: searchTerm
+				search: searchTerm,
+				archived: showArchived.toString()
 			});
 
 			if (selectedFilters.status.length > 0) {
@@ -200,9 +203,40 @@
 		showArchiveModal = true;
 	}
 
+	function toggleArchivedView() {
+		showArchived = !showArchived;
+		currentPage = 1;
+		fetchJournals(1);
+	}
+
 	async function confirmArchive() {
-		alert('Archive feature is currently restricted to Admins.');
-		showArchiveModal = false;
+		if (!journalToArchiveId) return;
+
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/journals/${journalToArchiveId}/archive`, {
+				method: 'PUT',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (res.ok) {
+				successMessage = showArchived
+					? 'Journal restored successfully.'
+					: 'Journal archived successfully.';
+
+				setTimeout(() => (successMessage = ''), 3000);
+
+				fetchJournals(currentPage);
+			} else {
+				alert('Failed to update archive status.');
+			}
+		} catch (e) {
+			console.error(e);
+			alert('Error processing request.');
+		} finally {
+			showArchiveModal = false;
+			journalToArchiveId = null;
+		}
 	}
 
 	function handleEdit(journal) {
@@ -252,10 +286,12 @@
 
 <ConfirmationModal
 	show={showArchiveModal}
-	title="Archive Journal"
-	message="Are you sure you want to archive this journal entry?"
-	confirmText="Archive"
-	confirmColor="red"
+	title={showArchived ? 'Restore Journal' : 'Archive Journal'}
+	message={showArchived
+		? 'Do you want to restore this journal to your active list?'
+		: 'Are you sure you want to archive this journal entry?'}
+	confirmText={showArchived ? 'Restore' : 'Archive'}
+	confirmColor={showArchived ? 'green' : 'red'}
 	on:close={() => (showArchiveModal = false)}
 	on:confirm={confirmArchive}
 />
@@ -267,8 +303,12 @@
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
 		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-900">My Journals</h1>
-			<p class="text-sm text-gray-500">Pages / Journals / Journal Entries List</p>
+			<h1 class="text-3xl font-bold text-gray-900">
+				{showArchived ? 'Archived Journals' : 'My Journals'}
+			</h1>
+			<p class="text-sm text-gray-500">
+				{showArchived ? 'Pages / Journals / Archive' : 'Pages / Journals / Journal Entries List'}
+			</p>
 		</div>
 
 		{#if successMessage}
@@ -326,21 +366,29 @@
 
 				<div class="flex items-center gap-4">
 					<button
-						onclick={() => console.log('Go to archived journals')}
-						class="rounded-lg border border-gray-400 bg-gray-100 px-4 py-2 font-medium text-gray-700 hover:bg-gray-200"
-						>Archived Journals</button
+						onclick={toggleArchivedView}
+						class={`rounded-lg border border-gray-400 px-4 py-2 font-medium transition-colors ${
+							showArchived
+								? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+								: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+						}`}
 					>
-					<button
-						onclick={openAddModal}
-						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
-					>
-						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
-							/>
-						</svg>
-						Add Journal
+						{showArchived ? 'Show Active Journals' : 'Archived Journals'}
 					</button>
+
+					{#if !showArchived}
+						<button
+							onclick={openAddModal}
+							class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
+						>
+							<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+								<path
+									d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
+								/>
+							</svg>
+							Add Journal
+						</button>
+					{/if}
 				</div>
 			</div>
 
@@ -366,7 +414,7 @@
 						{:else if journals.length === 0}
 							<tr>
 								<td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
-									No journal entries found.
+									No {showArchived ? 'archived' : ''} journal entries found.
 								</td>
 							</tr>
 						{:else}
@@ -423,46 +471,65 @@
 												</svg>
 											</button>
 
-											<button
-												onclick={() => handleEdit(journal)}
-												class="text-amber-600 transition-colors duration-200 hover:text-amber-800"
-												title="Edit Journal"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-5 w-5"
+											{#if !showArchived}
+												<button
+													onclick={() => handleEdit(journal)}
+													class="text-amber-600 transition-colors duration-200 hover:text-amber-800"
+													title="Edit Journal"
 												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-													/>
-												</svg>
-											</button>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+														/>
+													</svg>
+												</button>
+											{/if}
 
 											<button
 												onclick={() => handleArchive(journal.ID)}
-												class="text-red-600 transition-colors duration-200 hover:text-red-800"
-												title="Archive Journal"
+												class={`transition-colors duration-200 ${showArchived ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'}`}
+												title={showArchived ? 'Restore Journal' : 'Archive Journal'}
 											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-5 w-5"
-												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-													/>
-												</svg>
+												{#if showArchived}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
+														/>
+													</svg>
+												{:else}
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+														/>
+													</svg>
+												{/if}
 											</button>
 										</div>
 									</td>

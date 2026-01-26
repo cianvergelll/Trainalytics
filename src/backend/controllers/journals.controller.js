@@ -118,25 +118,34 @@ export async function getStudentJournals(req, res) {
         const limit = parseInt(req.query.limit) || 10;
         const search = req.query.search || '';
         const status = req.query.status || '';
+        const archived = req.query.archived || 'false';
 
         const user = req.user;
-
         if (user.role === 'student') {
             const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
-
             if (rows.length === 0 || rows[0].Extra1 !== studentId) {
                 return res.status(403).json({ error: 'Forbidden: You can only view your own journals.' });
             }
         }
 
-        const data = await journalsService.getStudentJournalLogs(studentId, page, limit, search, status);
-
+        const data = await journalsService.getStudentJournalLogs(studentId, page, limit, search, status, archived);
         res.json(data);
     } catch (err) {
         console.error('Error fetching student journals:', err);
         res.status(500).json({ error: 'Server error fetching journals.' });
     }
 }
+
+export const archiveJournal = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await journalsService.toggleArchiveJournal(id);
+        res.json({ success: true, message: 'Journal archive status updated.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to archive journal' });
+    }
+};
 
 export async function editJournal(req, res) {
     try {

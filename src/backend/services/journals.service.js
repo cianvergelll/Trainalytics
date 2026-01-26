@@ -158,7 +158,7 @@ export async function getJournalById(journalId) {
     }
 }
 
-export async function getStudentJournalLogs(studentId, page = 1, limit = 10, search = '', status = '') {
+export async function getStudentJournalLogs(studentId, page = 1, limit = 10, search = '', status = '', archived = 'false') {
     const [studentRows] = await pool.query(
         `SELECT StudentName, StudentID, CompanyName, SupervisorName, TargetHours, IsActive 
          FROM im_cec_students 
@@ -169,15 +169,12 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
     let student = null;
     if (studentRows.length > 0) {
         const s = studentRows[0];
-
         const [[{ totalRendered }]] = await pool.query(
             `SELECT SUM(HoursRendered) as totalRendered FROM im_cec_attendance WHERE StudentID = ?`,
             [studentId]
         );
-
         const rendered = parseFloat(totalRendered || 0);
         const target = parseFloat(s.TargetHours || 0);
-
         student = {
             name: s.StudentName,
             studentId: s.StudentID,
@@ -191,12 +188,16 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
     }
 
     const offset = (page - 1) * limit;
+
+    const isArchived = (archived === 'true' || archived === true) ? 1 : 0;
+
     let query = `
-        SELECT ID, Date, Title, Description, Status, DateApproved 
+        SELECT ID, Date, Title, Description, Status, DateApproved, IsArchived 
         FROM im_cec_journal 
-        WHERE StudentID = ?
-    `;
-    const params = [studentId];
+        WHERE StudentID = ? 
+        AND IsArchived = ?`;
+
+    const params = [studentId, isArchived];
 
     if (search) {
         query += ` AND (Title LIKE ? OR Description LIKE ?)`;
@@ -213,10 +214,10 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
         `SELECT COUNT(*) as total FROM (${query}) as sub`,
         params
     );
-    const total = countResult[0].total;
+    const total = countResult[0]?.total || 0;
 
     query += ` ORDER BY Date DESC LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    params.push(parseInt(limit), parseInt(offset));
 
     const [logs] = await pool.query(query, params);
 
@@ -231,8 +232,19 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
         logs: formattedLogs,
         total,
         currentPage: page,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit) || 1
     };
+}
+
+export async function toggleArchiveJournal(journalId) {
+    const [rows] = await pool.query('SELECT IsArchived FROM im_cec_journal WHERE ID = ?', [journalId]);
+    if (rows.length === 0) return false;
+
+    const currentStatus = rows[0].IsArchived;
+    const newStatus = currentStatus === 1 ? 0 : 1;
+
+    await pool.query('UPDATE im_cec_journal SET IsArchived = ? WHERE ID = ?', [newStatus, journalId]);
+    return true;
 }
 
 export async function addJournalFeedback(journalId, adminId, message, senderType) {
