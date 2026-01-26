@@ -1,14 +1,11 @@
-import * as attendanceService from '../services/attendances.service.js'; // Standardized Import
+import * as attendanceService from '../services/attendances.service.js';
 import { pool } from '../../config/db.js';
 
-// --- HELPER: Get Student ID reliably ---
 const getStudentId = async (req) => {
-    // 1. Try getting from the authenticated user object (Token)
     if (req.user && req.user.Extra1) {
         return req.user.Extra1;
     }
 
-    // 2. If not in token, fetch from DB using the User ID
     if (req.user && req.user.id) {
         const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [req.user.id]);
         if (rows.length > 0 && rows[0].Extra1) {
@@ -16,7 +13,6 @@ const getStudentId = async (req) => {
         }
     }
 
-    // 3. Fallback: Check if frontend sent it in body
     if (req.body && req.body.studentId) {
         return req.body.studentId;
     }
@@ -24,7 +20,6 @@ const getStudentId = async (req) => {
     return null;
 };
 
-// --- ADMIN: Get All Attendances ---
 export async function getAttendances(req, res) {
     try {
         const page = parseInt(req.query.page || '1', 10);
@@ -48,7 +43,6 @@ export async function getAttendances(req, res) {
     }
 }
 
-// --- ADMIN: Manual Add ---
 export async function addAttendance(req, res) {
     try {
         const adminId = req.user.id;
@@ -66,16 +60,11 @@ export async function addAttendance(req, res) {
     }
 }
 
-// --- STUDENT & ADMIN: Get Specific Student History ---
 export async function getStudentAttendance(req, res) {
     try {
-        // This endpoint is used by Student (My Attendance) AND Admin (View Student Attendance)
-        // If req.params.id exists, use it. 
-        // If not (and user is student), get their ID.
         let studentId = req.params.id;
 
         if (!studentId || studentId === 'undefined') {
-            // Fallback for student side if param wasn't passed clearly
             studentId = await getStudentId(req);
         }
 
@@ -88,7 +77,6 @@ export async function getStudentAttendance(req, res) {
 
         const result = await attendanceService.getStudentAttendancePaginated(studentId, page, limit);
 
-        // It is fine if result.records is empty, we just need the structure
         if (!result) {
             return res.status(404).json({ error: 'Student data not found.' });
         }
@@ -105,7 +93,6 @@ export async function getStudentAttendance(req, res) {
     }
 }
 
-// --- CLOCK IN ---
 export const clockIn = async (req, res) => {
     try {
         const studentId = await getStudentId(req);
@@ -122,7 +109,6 @@ export const clockIn = async (req, res) => {
     }
 };
 
-// --- CLOCK OUT ---
 export const clockOut = async (req, res) => {
     try {
         const studentId = await getStudentId(req);
@@ -139,7 +125,6 @@ export const clockOut = async (req, res) => {
     }
 };
 
-// --- GET STATUS ---
 export const getStatus = async (req, res) => {
     try {
         let studentId = req.params.studentId;

@@ -1,6 +1,5 @@
 import { pool } from '../../config/db.js';
 
-// --- HELPERS ---
 function formatDateIntl(dt) {
     if (!dt) return 'N/A';
     try {
@@ -19,7 +18,6 @@ function formatTimeIntl(dt) {
     } catch (e) { return 'Invalid Date'; }
 }
 
-// --- 1. ADMIN LIST (Paginated) ---
 export async function getAttendancesPaginated(page = 1, limit = 10, searchTerm = '') {
     const offset = (page - 1) * limit;
     let baseQuery = `
@@ -62,18 +60,15 @@ export async function getAttendancesPaginated(page = 1, limit = 10, searchTerm =
     return { attendances: formattedAttendances, total };
 }
 
-// --- 2. GET INDIVIDUAL STUDENT HISTORY (DEBUG MODE) ---
 export async function getStudentAttendancePaginated(studentId, page, limit) {
 
     const offset = (page - 1) * limit;
 
-    // STEP A: Fetch Student Profile
     const queryStudent = `SELECT StudentName, CompanyName, Section, TargetHours, TotalHours, RemainingHours, SupervisorName FROM im_cec_students WHERE StudentID = ?`;
 
     const [studentRows] = await pool.query(queryStudent, [studentId]);
 
-    // STEP B: Calculate Totals
-    const querySum = `SELECT SUM(HoursRendered) as totalRendered FROM im_cec_attendance WHERE StudentID = ?`;
+    const querySum = `SELECT SUM(HoursRendered) as totalRendered FROM im_cec_attendance WHERE StudentID = ? AND Status = 'Approved'`;
     const [sumResult] = await pool.query(querySum, [studentId]);
     const dbSum = parseFloat(sumResult[0]?.totalRendered || 0);
 
@@ -86,7 +81,6 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
         const target = parseFloat(s.TargetHours || 0);
 
         studentObj = {
-            // PascalCase
             StudentName: s.StudentName,
             CompanyName: s.CompanyName,
             Section: s.Section,
@@ -95,7 +89,6 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
             RemainingHours: (target - currentTotal).toFixed(2),
             SupervisorName: s.SupervisorName,
 
-            // camelCase aliases
             name: s.StudentName,
             company: s.CompanyName,
             section: s.Section,
@@ -122,14 +115,12 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
         [studentId, parseInt(limit), parseInt(offset)]
     );
 
-    // STEP D: Count Total Logs
     const [countResult] = await pool.query(
         `SELECT COUNT(*) as total FROM im_cec_attendance WHERE StudentID = ?`,
         [studentId]
     );
     const total = countResult[0]?.total || 0;
 
-    // STEP E: Format Logs
     const formattedRecords = records.map(r => ({
         ID: r.ID,
         Date: formatDateIntl(r.TimeIn),
@@ -147,7 +138,6 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
     };
 }
 
-// --- 3. CLOCK IN ---
 export async function studentClockIn(studentId) {
     const [existing] = await pool.query(
         `SELECT ID FROM im_cec_attendance 
@@ -171,7 +161,6 @@ export async function studentClockIn(studentId) {
     return result.insertId;
 }
 
-// --- 4. CLOCK OUT ---
 export async function studentClockOut(studentId) {
     const [rows] = await pool.query(
         `SELECT ID, TimeIn FROM im_cec_attendance 
@@ -193,8 +182,16 @@ export async function studentClockOut(studentId) {
 
     await pool.query(
         `UPDATE im_cec_students 
-         SET TotalHours = (SELECT SUM(HoursRendered) FROM im_cec_attendance WHERE StudentID = ?),
-             RemainingHours = GREATEST(0, TargetHours - (SELECT SUM(HoursRendered) FROM im_cec_attendance WHERE StudentID = ?))
+         SET TotalHours = (
+             SELECT COALESCE(SUM(HoursRendered), 0) 
+             FROM im_cec_attendance 
+             WHERE StudentID = ? AND Status = 'Approved'
+         ),
+         RemainingHours = GREATEST(0, TargetHours - (
+             SELECT COALESCE(SUM(HoursRendered), 0) 
+             FROM im_cec_attendance 
+             WHERE StudentID = ? AND Status = 'Approved'
+         ))
          WHERE StudentID = ?`,
         [studentId, studentId, studentId]
     );
@@ -202,7 +199,6 @@ export async function studentClockOut(studentId) {
     return { success: true };
 }
 
-// --- 5. DASHBOARD STATUS ---
 export async function getLatestAttendanceStatus(studentId) {
     const [rows] = await pool.query(
         `SELECT ID, TimeIn, TimeOut 
@@ -221,7 +217,6 @@ export async function getLatestAttendanceStatus(studentId) {
     return { status: 'error' };
 }
 
-// --- 6. MANUAL ADD ---
 export async function addAttendanceRecord(data, adminId) {
     const { studentId, timeIn, timeOut } = data;
     let diffMs = Math.abs(new Date(timeOut) - new Date(timeIn));
