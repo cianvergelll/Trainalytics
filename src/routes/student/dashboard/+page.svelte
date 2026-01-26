@@ -10,6 +10,7 @@
 		RemainingHours: 0,
 		TargetHours: 0
 	});
+	let announcements = $state([]);
 	let loading = $state(true);
 
 	let studentId = $state(null);
@@ -39,13 +40,11 @@
 				return;
 			}
 
-			const authRes = await fetch(`/api/auth/me?t=${new Date().getTime()}`, {
-				headers: { Authorization: `Bearer ${token}` }
-			});
+			const headers = { Authorization: `Bearer ${token}` };
 
+			const authRes = await fetch(`/api/auth/me?t=${new Date().getTime()}`, { headers });
 			if (!authRes.ok) throw new Error('Auth failed');
 			const authData = await authRes.json();
-
 			studentId = authData.studentId;
 
 			if (!studentId) {
@@ -54,10 +53,7 @@
 				return;
 			}
 
-			const studentRes = await fetch(`/api/students/${studentId}`, {
-				headers: { Authorization: `Bearer ${token}` }
-			});
-
+			const studentRes = await fetch(`/api/students/${studentId}`, { headers });
 			if (studentRes.ok) {
 				const data = await studentRes.json();
 				student = {
@@ -66,6 +62,12 @@
 					RemainingHours: Number(data.RemainingHours) || 0,
 					TargetHours: Number(data.TargetHours) || 0
 				};
+			}
+
+			const annRes = await fetch('/api/announcements?limit=10', { headers });
+			if (annRes.ok) {
+				const annData = await annRes.json();
+				announcements = annData.announcements || [];
 			}
 
 			await fetchClockStatus();
@@ -356,18 +358,28 @@
 
 					<div class="max-h-60 flex-1 overflow-y-auto pr-2 md:max-h-none">
 						<div class="space-y-3">
-							{#each Array(6) as _}
-								<div class="group rounded-md bg-gray-50 p-3 transition-colors hover:bg-gray-100">
-									<p class="line-clamp-2 text-sm font-medium text-gray-800">
-										Classes will be suspended from Dec 20, 2025, to Jan 3, 2026, in observance of
-										the holidays.
-									</p>
-									<div class="mt-2 flex items-center gap-2">
-										<span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
-										<span class="text-xs text-gray-400">Just now</span>
-									</div>
+							{#if announcements.length === 0}
+								<div class="flex h-full items-center justify-center py-4 text-sm text-gray-500">
+									No active announcements.
 								</div>
-							{/each}
+							{:else}
+								{#each announcements as ann}
+									<div class="group rounded-md bg-gray-50 p-3 transition-colors hover:bg-gray-100">
+										<h4 class="mb-1 text-xs font-bold tracking-wide text-gray-900 uppercase">
+											{ann.Title}
+										</h4>
+										<p class="line-clamp-2 text-sm font-medium text-gray-800">
+											{ann.Description}
+										</p>
+										<div class="mt-2 flex items-center gap-2">
+											<span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+											<span class="text-xs text-gray-400">
+												{ann.CreatedAt}
+											</span>
+										</div>
+									</div>
+								{/each}
+							{/if}
 						</div>
 					</div>
 				</div>
