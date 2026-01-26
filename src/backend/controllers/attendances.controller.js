@@ -84,6 +84,7 @@ export async function getStudentAttendance(req, res) {
         res.json({
             student: result.student,
             records: result.records,
+            total: result.total,
             totalPages: Math.ceil(result.total / limit),
             currentPage: page
         });
