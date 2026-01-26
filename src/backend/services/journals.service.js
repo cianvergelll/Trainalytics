@@ -255,3 +255,17 @@ export async function getJournalFeedback(journalId) {
     );
     return rows;
 }
+
+export async function updateJournal(id, data) {
+    const { title, description, date, q1, q2, q3 } = data;
+
+    const [result] = await pool.query(
+        `UPDATE im_cec_journal 
+         SET Title = ?, Description = ?, Date = ?, 
+             Reflection1 = ?, Reflection2 = ?, Reflection3 = ?
+         WHERE ID = ? AND Status = 'pending'`,
+        [title, description, date, q1, q2, q3, id]
+    );
+
+    return result.affectedRows > 0;
+}

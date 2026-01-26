@@ -137,3 +137,32 @@ export async function getStudentJournals(req, res) {
         res.status(500).json({ error: 'Server error fetching journals.' });
     }
 }
+
+export async function editJournal(req, res) {
+    try {
+        const { id } = req.params;
+        const { title, description, date, q1, q2, q3 } = req.body;
+        const user = req.user;
+
+        if (user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            const studentId = rows[0]?.Extra1;
+
+            const journal = await journalsService.getJournalById(id);
+            if (!journal || journal.studentId !== studentId) {
+                return res.status(403).json({ error: 'You can only edit your own journals.' });
+            }
+        }
+
+        const success = await journalsService.updateJournal(id, { title, description, date, q1, q2, q3 });
+
+        if (!success) {
+            return res.status(400).json({ error: 'Update failed. You can only edit "Pending" journals.' });
+        }
+
+        res.json({ message: 'Journal updated successfully.' });
+    } catch (err) {
+        console.error('Edit Journal Error:', err);
+        res.status(500).json({ error: 'Server error while updating journal.' });
+    }
+}

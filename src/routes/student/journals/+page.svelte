@@ -24,6 +24,8 @@
 	let showArchiveModal = $state(false);
 	let journalToArchiveId = $state(null);
 
+	let selectedJournal = $state(null);
+
 	let filterOptions = $state({
 		companies: [],
 		sections: []
@@ -135,6 +137,36 @@
 		}
 	}
 
+	async function handleUpdateJournal(event) {
+		const { id, ...updateData } = event.detail;
+		const token = localStorage.getItem('sessionToken');
+
+		try {
+			const res = await fetch(`/api/journals/${id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(updateData)
+			});
+
+			if (res.ok) {
+				showAddJournalModal = false;
+				selectedJournal = null;
+				successMessage = 'Journal updated successfully.';
+				setTimeout(() => (successMessage = ''), 3000);
+				fetchJournals(currentPage);
+			} else {
+				const err = await res.json();
+				alert(err.error || 'Failed to update journal');
+			}
+		} catch (e) {
+			console.error(e);
+			alert('Network error occurred');
+		}
+	}
+
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
@@ -174,7 +206,17 @@
 	}
 
 	function handleEdit(journal) {
-		alert('Edit functionality requires backend implementation.');
+		if (journal.Status?.toLowerCase() !== 'pending') {
+			alert('You can only edit journals that are still Pending.');
+			return;
+		}
+		selectedJournal = journal;
+		showAddJournalModal = true;
+	}
+
+	function openAddModal() {
+		selectedJournal = null;
+		showAddJournalModal = true;
 	}
 
 	function getStatusClass(status) {
@@ -199,8 +241,13 @@
 
 <AddJournalModal
 	show={showAddJournalModal}
-	on:close={() => (showAddJournalModal = false)}
+	journalToEdit={selectedJournal}
+	on:close={() => {
+		showAddJournalModal = false;
+		selectedJournal = null;
+	}}
 	on:add={handleAddJournal}
+	on:update={handleUpdateJournal}
 />
 
 <ConfirmationModal
@@ -284,7 +331,7 @@
 						>Archived Journals</button
 					>
 					<button
-						onclick={() => (showAddJournalModal = true)}
+						onclick={openAddModal}
 						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white hover:bg-green-600"
 					>
 						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
