@@ -12,7 +12,7 @@
 		targetHours: 0,
 		totalRendered: 0,
 		remainingHours: 0,
-		isActive: 0
+		isActive: 1
 	});
 
 	let attendanceRecords = $state([]);
@@ -24,6 +24,7 @@
 
 	// --- API Logic ---
 	async function fetchAttendanceData(page) {
+		loading = true; // Set loading true on fetch start
 		try {
 			const token = localStorage.getItem('sessionToken');
 			if (!token) {
@@ -54,10 +55,35 @@
 
 			if (res.ok) {
 				const data = await res.json();
-				studentInfo = data.student;
-				attendanceRecords = data.records;
-				currentPage = data.currentPage;
-				totalPages = data.totalPages;
+
+				// --- MAPPING DATA TO MATCH YOUR TEMPLATE ---
+
+				// 1. Map Student Info
+				const s = data.student || {};
+				studentInfo = {
+					name: s.name || s.StudentName || 'Unknown',
+					studentId: myStudentId,
+					company: s.company || s.CompanyName || 'N/A',
+					supervisor: s.SupervisorName || 'N/A', // Backend might need update to send this
+					targetHours: s.targetHours || 0,
+					totalRendered: s.totalHours || 0, // Backend 'totalHours' is the rendered sum
+					remainingHours: s.remainingHours || 0,
+					isActive: s.IsActive ?? 1
+				};
+
+				// 2. Map Records (Backend sends PascalCase, Template needs camelCase)
+				attendanceRecords = (data.records || []).map((r) => ({
+					date: r.Date,
+					timeIn: r.TimeIn,
+					timeOut: r.TimeOut,
+					totalHours: r.HoursRendered, // Use the numeric value
+					status: r.Status
+				}));
+
+				// 3. Pagination
+				const totalItems = data.total || 0;
+				totalPages = Math.ceil(totalItems / limit) || 1;
+				currentPage = page;
 			} else {
 				error = 'Failed to load attendance records.';
 			}

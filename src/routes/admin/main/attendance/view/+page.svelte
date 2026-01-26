@@ -34,13 +34,14 @@
 
 		const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
 		const queryString = params.toString();
+		// Caching is optional - consider removing if real-time data is critical
 		const cacheKey = `attendance_view_${studentId}?${queryString}`;
 		const cachedData = sessionStorage.getItem(cacheKey);
 
 		if (cachedData) {
 			const data = JSON.parse(cachedData);
-			studentInfo = data.student;
-			attendanceRecords = data.records;
+			studentInfo = data.studentInfo; // Use cached mapped data
+			attendanceRecords = data.attendanceRecords;
 			currentPage = data.currentPage;
 			totalPages = data.totalPages;
 			loading = false;
@@ -62,11 +63,46 @@
 
 			if (res.ok) {
 				const data = await res.json();
-				studentInfo = data.student;
-				attendanceRecords = data.records;
-				currentPage = data.currentPage;
-				totalPages = data.totalPages;
-				sessionStorage.setItem(cacheKey, JSON.stringify(data));
+
+				// --- DATA MAPPING FIX ---
+				// We map backend response to the variables this template uses
+
+				const s = data.student || {};
+				const mappedStudent = {
+					name: s.name || s.StudentName || 'Unknown',
+					studentId: studentId,
+					company: s.company || s.CompanyName || 'N/A',
+					supervisor: s.SupervisorName || 'N/A',
+					targetHours: s.targetHours || 0,
+					totalRendered: s.totalHours || 0,
+					remainingHours: s.remainingHours || 0,
+					isActive: s.IsActive ?? 1
+				};
+
+				const mappedRecords = (data.records || []).map((r) => ({
+					date: r.Date,
+					timeIn: r.TimeIn,
+					timeOut: r.TimeOut,
+					totalHours: r.HoursRendered, // Use raw number for calculation/display
+					status: r.Status
+				}));
+
+				// Update State
+				studentInfo = mappedStudent;
+				attendanceRecords = mappedRecords;
+				currentPage = page;
+				totalPages = Math.ceil((data.total || 0) / limit) || 1;
+
+				// Update Cache with MAPPED data
+				sessionStorage.setItem(
+					cacheKey,
+					JSON.stringify({
+						studentInfo: mappedStudent,
+						attendanceRecords: mappedRecords,
+						currentPage,
+						totalPages
+					})
+				);
 			} else {
 				const err = await res.json();
 				error = err.error || 'Failed to load attendance records.';
