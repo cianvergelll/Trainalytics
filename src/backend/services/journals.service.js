@@ -109,18 +109,9 @@ export async function getJournalById(journalId) {
     try {
         const [rows] = await pool.query(
             `SELECT 
-                j.ID,
-                j.Date,
-                j.Title,
-                j.Description,
-                j.Status,
-                j.Reflection1,
-                j.Reflection2,
-                j.Reflection3,
-                s.StudentName, 
-                s.CompanyName,
-                s.SupervisorName,
-                s.StudentID as studentId -- Added for the security check
+                j.ID, j.Date, j.Title, j.Description, j.Status,
+                j.Reflection1, j.Reflection2, j.Reflection3,
+                s.StudentName, s.CompanyName, s.SupervisorName, s.StudentID as studentId
              FROM im_system.im_cec_journal j
              LEFT JOIN im_system.im_cec_students s ON j.StudentID = s.StudentID
              WHERE j.ID = ?`,
@@ -128,8 +119,15 @@ export async function getJournalById(journalId) {
         );
 
         if (rows.length === 0) return null;
-
         const journal = rows[0];
+
+        const [feedbackRows] = await pool.query(
+            `SELECT Message, CreatedAt, SenderType, AdminID 
+             FROM im_cec_journal_feedback 
+             WHERE JournalID = ? 
+             ORDER BY CreatedAt ASC`,
+            [journalId]
+        );
 
         const formatDate = (d) => {
             if (!d) return 'N/A';
@@ -151,6 +149,7 @@ export async function getJournalById(journalId) {
             q1: journal.Reflection1 || '',
             q2: journal.Reflection2 || '',
             q3: journal.Reflection3 || '',
+            allFeedback: feedbackRows,
             filename: 'Journal Entry #' + journal.ID
         };
     } catch (error) {
@@ -236,12 +235,23 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
     };
 }
 
-export async function addJournalFeedback(journalId, adminId, message) {
+export async function addJournalFeedback(journalId, adminId, message, senderType) {
     const [result] = await pool.query(
         `INSERT INTO im_cec_journal_feedback 
-        (JournalID, AdminID, Message) 
-        VALUES (?, ?, ?)`,
-        [journalId, adminId, message]
+        (JournalID, AdminID, Message, SenderType) 
+        VALUES (?, ?, ?, ?)`,
+        [journalId, adminId, message, senderType]
     );
     return result.insertId;
+}
+
+export async function getJournalFeedback(journalId) {
+    const [rows] = await pool.query(
+        `SELECT ID, Message, SenderType, CreatedAt, AdminID
+         FROM im_cec_journal_feedback 
+         WHERE JournalID = ? 
+         ORDER BY CreatedAt ASC`,
+        [journalId]
+    );
+    return rows;
 }

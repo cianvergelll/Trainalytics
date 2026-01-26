@@ -1,98 +1,110 @@
 <script>
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { onMount, tick } from 'svelte';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
 	let journalId = $derived($page.url.searchParams.get('id'));
-	let fromPage = $derived($page.url.searchParams.get('from'));
+	let fromPage = $derived($page.url.searchParams.get('from')); // 'student-list' or default
 	let sourceStudentId = $derived($page.url.searchParams.get('studentId'));
 
-	let journal = $state({
-		studentName: '',
-		company: '',
-		supervisor: '',
-		taskName: '',
-		taskDescription: '',
-		date: '',
-		status: '',
-		q1: '',
-		q2: '',
-		q3: '',
-		filename: ''
-	});
-
-	let feedback = $state('');
+	let journal = $state(null);
+	let chatHistory = $state([]);
+	let newMessage = $state('');
 	let loading = $state(true);
-	let error = $state('');
-	let successMessage = $state('');
+	let submitting = $state(false);
+	let chatContainer = $state(null); // Reference for auto-scrolling
 
+	// Fetch Data on Mount
 	onMount(async () => {
-		if (!journalId) {
-			error = 'No Journal ID specified.';
-			loading = false;
-			return;
-		}
 		await fetchJournalDetails();
 	});
 
 	async function fetchJournalDetails() {
+		const token = localStorage.getItem('sessionToken');
+		if (!token) {
+			goto('/login');
+			return;
+		}
+
 		try {
-			const token = localStorage.getItem('sessionToken');
 			const res = await fetch(`/api/journals/${journalId}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
 			if (res.ok) {
-				journal = await res.json();
+				const data = await res.json();
+				journal = data;
+				chatHistory = data.allFeedback || [];
+				loading = false;
+				scrollToBottom();
 			} else {
-				error = 'Failed to load journal details.';
+				console.error('Failed to load journal');
+				loading = false;
 			}
-		} catch (e) {
-			console.error(e);
-			error = 'Network error loading journal.';
-		} finally {
+		} catch (error) {
+			console.error('Error:', error);
 			loading = false;
+		}
+	}
+
+	async function scrollToBottom() {
+		await tick();
+		if (chatContainer) {
+			chatContainer.scrollTop = chatContainer.scrollHeight;
 		}
 	}
 
 	function handleBack() {
 		if (fromPage === 'student-list' && sourceStudentId) {
-			goto(`/admin/main/journals/student?id=${sourceStudentId}&from=students`);
+			goto(`/admin/main/journals/student?id=${sourceStudentId}`);
 		} else {
 			goto('/admin/main/journals');
 		}
 	}
 
-	async function handleSubmitFeedback() {
-		if (!feedback.trim()) {
-			alert('Please enter a message.');
-			return;
-		}
+	async function sendMessage() {
+		if (!newMessage.trim() || submitting) return;
+		submitting = true;
 
+		const token = localStorage.getItem('sessionToken');
 		try {
-			const token = localStorage.getItem('sessionToken');
 			const res = await fetch(`/api/journals/${journalId}/feedback`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`
 				},
-				body: JSON.stringify({ message: feedback })
+				body: JSON.stringify({
+					message: newMessage,
+					senderType: 'ADMIN'
+				})
 			});
 
 			if (res.ok) {
-				successMessage = 'Feedback submitted successfully!';
-				feedback = ''; // Clear textarea
-				setTimeout(() => (successMessage = ''), 3000);
+				chatHistory = [
+					...chatHistory,
+					{
+						Message: newMessage,
+						SenderType: 'ADMIN',
+						CreatedAt: new Date().toISOString()
+					}
+				];
+				newMessage = '';
+				scrollToBottom();
 			} else {
-				const err = await res.json();
-				alert(err.error || 'Failed to submit feedback.');
+				alert('Failed to send message.');
 			}
-		} catch (e) {
-			console.error(e);
-			alert('An error occurred while submitting feedback.');
+		} catch (error) {
+			console.error('Error sending feedback:', error);
+		} finally {
+			submitting = false;
 		}
+	}
+
+	function formatTime(isoString) {
+		if (!isoString) return '';
+		return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	}
 </script>
 
@@ -101,154 +113,178 @@
 		<SideNavAdmin />
 	</div>
 
-	<div class="flex h-full flex-1 flex-col overflow-hidden rounded-xl bg-white px-8 py-6 shadow-lg">
+	<div class="flex h-full flex-1 flex-col overflow-hidden rounded-xl bg-white p-6 shadow-lg">
 		<div class="mb-4 flex flex-shrink-0 items-center justify-between">
-			<div>
-				<h1 class="text-3xl font-bold text-gray-800">View Journal</h1>
-				<p class="text-sm text-gray-500">Pages / Journal / View Journal</p>
-			</div>
-			<button
-				onclick={handleBack}
-				class="rounded-full p-2 text-green-500 transition-colors hover:bg-green-50 hover:text-green-600"
-				title="Go Back"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="2.5"
-					stroke="currentColor"
-					class="h-7 w-7"
+			<div class="flex items-center gap-3">
+				<button
+					aria-label="Go Back"
+					onclick={handleBack}
+					class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 transition-colors hover:bg-gray-200"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
-					/>
-				</svg>
-			</button>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke-width="2"
+						stroke="currentColor"
+						class="h-4 w-4 text-gray-600"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+						/>
+					</svg>
+				</button>
+				<h1 class="text-xl font-bold text-gray-800">Journal Review</h1>
+			</div>
 		</div>
 
 		{#if loading}
-			<div class="flex h-full items-center justify-center">
-				<div
-					class="h-12 w-12 animate-spin rounded-full border-4 border-green-500 border-t-transparent"
-				></div>
+			<div class="flex h-full items-center justify-center text-gray-500">
+				Loading journal details...
 			</div>
-		{:else if error}
-			<div class="flex h-full flex-col items-center justify-center text-red-600">
-				<p class="text-lg font-bold">{error}</p>
-				<button onclick={handleBack} class="mt-4 text-blue-600 underline">Return to List</button>
-			</div>
-		{:else}
-			<div class="flex flex-1 gap-6 overflow-hidden">
-				<div class="flex flex-[2] flex-col gap-4 overflow-hidden rounded-xl bg-gray-50 p-5">
-					<div
-						class="flex flex-shrink-0 items-center justify-between border-b border-gray-200 pb-3"
-					>
-						<h2 class="text-xl font-bold text-gray-800">{journal.studentName}</h2>
-						<div class="flex gap-6 text-sm text-gray-600">
-							<p><span class="font-bold text-gray-700">Company:</span> {journal.company}</p>
-							<p>
-								<span class="font-bold text-gray-700">Supervisor:</span>
-								{journal.supervisor || 'N/A'}
-							</p>
-						</div>
-					</div>
-
-					<div class="flex min-h-0 flex-col rounded-xl bg-white p-5 shadow-sm">
-						<h3 class="mb-3 text-base font-bold text-gray-700">Task Log</h3>
-
-						<div class="mb-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-							<div class="grid grid-cols-[110px_1fr]">
-								<span class="font-bold text-gray-700">Task Name:</span>
-								<span class="truncate text-gray-600">{journal.taskName}</span>
-							</div>
-							<div class="grid grid-cols-[70px_1fr]">
-								<span class="font-bold text-gray-700">Date:</span>
-								<span class="text-gray-600">{journal.date}</span>
-							</div>
-							<div class="col-span-2 grid grid-cols-[110px_1fr]">
-								<span class="font-bold text-gray-700">Description:</span>
-								<span class="truncate text-gray-600">{journal.taskDescription}</span>
-							</div>
-							<div class="col-span-2 grid grid-cols-[110px_1fr]">
-								<span class="font-bold text-gray-700">Status:</span>
-								<span
-									class="font-bold capitalize"
-									class:text-green-500={journal.status === 'approved'}
-									class:text-yellow-500={journal.status === 'pending'}
-									class:text-red-500={journal.status === 'denied'}>{journal.status}</span
-								>
-							</div>
-						</div>
-
-						<div class="flex-grow space-y-3 overflow-y-auto pr-2 text-sm">
-							{#if journal.q1}
-								<div class="rounded-lg bg-gray-50 p-3">
-									<p class="font-bold text-gray-700">What did you learn today?</p>
-									<p class="mt-1 leading-relaxed text-gray-600">{journal.q1}</p>
-								</div>
-							{/if}
-							{#if journal.q2}
-								<div class="rounded-lg bg-gray-50 p-3">
-									<p class="font-bold text-gray-700">Challenges & Solutions:</p>
-									<p class="mt-1 leading-relaxed text-gray-600">{journal.q2}</p>
-								</div>
-							{/if}
-							{#if journal.q3}
-								<div class="rounded-lg bg-gray-50 p-3">
-									<p class="font-bold text-gray-700">Areas for improvement:</p>
-									<p class="mt-1 leading-relaxed text-gray-600">{journal.q3}</p>
-								</div>
-							{/if}
-						</div>
-
-						<div class="mt-4 flex flex-shrink-0 items-center gap-3 border-t pt-3">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 24 24"
-								fill="currentColor"
-								class="h-6 w-6 text-red-500"
+		{:else if journal}
+			<div class="grid min-h-0 flex-1 grid-cols-1 gap-6 overflow-hidden lg:grid-cols-3">
+				<div class="overflow-y-auto pr-2 lg:col-span-2">
+					<div class="mb-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+						<div class="mb-6 flex items-start gap-4 border-b border-gray-100 pb-6">
+							<div
+								class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-600"
 							>
-								<path
-									fill-rule="evenodd"
-									d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z"
-									clip-rule="evenodd"
-								/>
-								<path
-									d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z"
-								/>
-							</svg>
-							<span class="text-sm font-medium text-blue-600 underline">
-								{journal.filename}
-							</span>
+								{journal.studentName?.charAt(0) || 'S'}
+							</div>
+							<div>
+								<h2 class="text-lg font-bold text-gray-900">{journal.studentName}</h2>
+								<div class="flex flex-col text-sm text-gray-500">
+									<span>{journal.company}</span>
+									<span class="text-xs">Supervisor: {journal.supervisor}</span>
+								</div>
+							</div>
+							<div class="ml-auto text-right">
+								<span
+									class={`rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase ${
+										journal.status === 'approved'
+											? 'bg-green-100 text-green-700'
+											: journal.status === 'pending'
+												? 'bg-yellow-100 text-yellow-700'
+												: 'bg-red-100 text-red-700'
+									}`}
+								>
+									{journal.status}
+								</span>
+								<p class="mt-1 text-xs text-gray-400">{journal.date}</p>
+							</div>
+						</div>
+
+						<div class="mb-8">
+							<h3 class="mb-2 text-sm font-bold tracking-wider text-gray-400 uppercase">
+								Task Accomplished
+							</h3>
+							<div class="rounded-lg bg-gray-50 p-4">
+								<h4 class="mb-1 font-semibold text-gray-800">{journal.taskName}</h4>
+								<p class="text-sm whitespace-pre-wrap text-gray-600">{journal.taskDescription}</p>
+							</div>
+						</div>
+
+						<div class="space-y-6">
+							<div>
+								<h3 class="mb-2 text-sm font-bold tracking-wider text-gray-400 uppercase">
+									1. What did you learn today?
+								</h3>
+								<p class="rounded-lg border border-gray-100 p-4 text-sm text-gray-700">
+									{journal.q1}
+								</p>
+							</div>
+							<div>
+								<h3 class="mb-2 text-sm font-bold tracking-wider text-gray-400 uppercase">
+									2. What challenges did you encounter?
+								</h3>
+								<p class="rounded-lg border border-gray-100 p-4 text-sm text-gray-700">
+									{journal.q2}
+								</p>
+							</div>
+							<div>
+								<h3 class="mb-2 text-sm font-bold tracking-wider text-gray-400 uppercase">
+									3. How can you improve?
+								</h3>
+								<p class="rounded-lg border border-gray-100 p-4 text-sm text-gray-700">
+									{journal.q3}
+								</p>
+							</div>
 						</div>
 					</div>
 				</div>
 
-				<div class="flex flex-1 flex-col rounded-xl bg-gray-50 p-5 shadow-sm">
-					<h2 class="mb-3 text-base font-bold text-gray-800">Adviser's Feedback</h2>
+				<div
+					class="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-1"
+				>
+					<div class="border-b bg-gray-50 px-4 py-3 font-semibold text-gray-700">
+						Feedback & Discussion
+					</div>
 
-					{#if successMessage}
-						<div class="mb-3 rounded bg-green-100 p-2 text-center text-sm text-green-700">
-							{successMessage}
-						</div>
-					{/if}
+					<div bind:this={chatContainer} class="flex-1 space-y-4 overflow-y-auto bg-gray-50/50 p-4">
+						{#if chatHistory.length === 0}
+							<div class="mt-10 text-center text-sm text-gray-400">
+								No feedback yet. Start the conversation!
+							</div>
+						{/if}
 
-					<textarea
-						id="feedback"
-						bind:value={feedback}
-						class="w-full flex-grow resize-none rounded-lg border border-gray-300 p-4 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none"
-						placeholder="Type your feedback here..."
-					></textarea>
+						{#each chatHistory as msg}
+							<div class={`flex ${msg.SenderType === 'ADMIN' ? 'justify-end' : 'justify-start'}`}>
+								<div
+									class={`max-w-[85%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+										msg.SenderType === 'ADMIN'
+											? 'rounded-br-none bg-blue-600 text-white'
+											: 'rounded-bl-none border border-gray-200 bg-white text-gray-800'
+									}`}
+								>
+									<p>{msg.Message}</p>
+									<span
+										class={`mt-1 block text-[10px] ${
+											msg.SenderType === 'ADMIN' ? 'text-right text-blue-100' : 'text-gray-400'
+										}`}
+									>
+										{formatTime(msg.CreatedAt)}
+									</span>
+								</div>
+							</div>
+						{/each}
+					</div>
 
-					<button
-						onclick={handleSubmitFeedback}
-						class="mt-4 w-full rounded-lg bg-green-500 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-green-600"
-					>
-						Submit Feedback
-					</button>
+					<div class="border-t bg-white p-3">
+						<form
+							onsubmit={(e) => {
+								e.preventDefault();
+								sendMessage();
+							}}
+							class="flex gap-2"
+						>
+							<input
+								type="text"
+								bind:value={newMessage}
+								placeholder="Write feedback..."
+								class="flex-1 rounded-full border border-gray-300 bg-gray-50 px-4 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+							/>
+							<button
+								aria-label="Submit"
+								type="submit"
+								disabled={submitting}
+								class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+									class="ml-0.5 h-4 w-4"
+								>
+									<path
+										d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z"
+									/>
+								</svg>
+							</button>
+						</form>
+					</div>
 				</div>
 			</div>
 		{/if}

@@ -10,6 +10,6 @@ router.post('/', protect, addJournal);
 router.get('/student/:id', protect, getStudentJournals);
 
 router.get('/:id', protect, getJournalDetails);
-router.post('/:id/feedback', protect, isAdmin, submitFeedback);
+router.post('/:id/feedback', protect, submitFeedback);
 
 export default router;

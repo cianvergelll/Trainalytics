@@ -87,14 +87,22 @@ export async function getJournalDetails(req, res) {
 export async function submitFeedback(req, res) {
     try {
         const { id } = req.params;
-        const { message } = req.body;
-        const adminId = req.user.id;
+        const { message, senderType } = req.body;
 
         if (!id || !message) {
             return res.status(400).json({ error: 'Journal ID and Message are required.' });
         }
 
-        await journalsService.addJournalFeedback(id, adminId, message);
+        let adminId = null;
+        let studentId = null;
+
+        if (req.user.role !== 'student') {
+            adminId = req.user.id;
+        } else {
+            studentId = req.user.id;
+        }
+
+        await journalsService.addJournalFeedback(id, adminId, message, senderType);
 
         res.status(201).json({ message: 'Feedback submitted successfully.' });
     } catch (err) {
