@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNav from '$lib/components/SideNav.svelte';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
 	let student = $state({
 		StudentName: '',
@@ -11,9 +12,8 @@
 	});
 	let loading = $state(true);
 
-	// --- NEW STATES FOR CLOCKING ---
 	let studentId = $state(null);
-	let clockStatus = $state('loading'); // 'loading', 'not_started', 'clocked_in', 'clocked_out'
+	let clockStatus = $state('loading');
 	let loadingAction = $state(false);
 
 	let currentTime = $state(new Date());
@@ -21,6 +21,15 @@
 	let today = new Date();
 	let currentMonth = $state(today.getMonth());
 	let currentYear = $state(today.getFullYear());
+
+	let showModal = $state(false);
+	let isProcessing = $state(false);
+	let modalConfig = $state({
+		title: '',
+		message: '',
+		type: 'info',
+		action: null
+	});
 
 	async function fetchDashboardData() {
 		try {
@@ -37,7 +46,6 @@
 			if (!authRes.ok) throw new Error('Auth failed');
 			const authData = await authRes.json();
 
-			// Store ID for clocking functions
 			studentId = authData.studentId;
 
 			if (!studentId) {
@@ -46,7 +54,6 @@
 				return;
 			}
 
-			// 1. Fetch Student Profile Stats
 			const studentRes = await fetch(`/api/students/${studentId}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
@@ -61,7 +68,6 @@
 				};
 			}
 
-			// 2. Fetch Clock Status immediately after getting ID
 			await fetchClockStatus();
 		} catch (e) {
 			console.error('Dashboard load error:', e);
@@ -70,7 +76,6 @@
 		}
 	}
 
-	// --- NEW FUNCTION: CHECK STATUS ---
 	async function fetchClockStatus() {
 		if (!studentId) return;
 		try {
@@ -79,16 +84,13 @@
 				headers: { Authorization: `Bearer ${token}` }
 			});
 			const data = await res.json();
-			clockStatus = data.status; // 'not_started', 'clocked_in', 'clocked_out'
+			clockStatus = data.status;
 		} catch (e) {
 			console.error('Status fetch error', e);
 		}
 	}
 
-	// --- NEW FUNCTION: CLOCK IN ---
-	async function handleClockIn() {
-		if (!confirm('Are you sure you want to Clock In?')) return;
-		loadingAction = true;
+	async function clockIn() {
 		const token = localStorage.getItem('sessionToken');
 
 		try {
@@ -102,23 +104,17 @@
 			});
 
 			if (res.ok) {
-				await fetchClockStatus(); // Refresh UI
-				alert('Clocked in successfully!');
+				await fetchClockStatus();
 			} else {
 				const err = await res.json();
 				alert(err.error || 'Clock In failed');
 			}
 		} catch (e) {
 			alert('Network error');
-		} finally {
-			loadingAction = false;
 		}
 	}
 
-	// --- NEW FUNCTION: CLOCK OUT ---
-	async function handleClockOut() {
-		if (!confirm('Are you sure you want to Clock Out?')) return;
-		loadingAction = true;
+	async function clockOut() {
 		const token = localStorage.getItem('sessionToken');
 
 		try {
@@ -132,9 +128,7 @@
 			});
 
 			if (res.ok) {
-				await fetchClockStatus(); // Refresh UI
-				alert('Clocked out successfully!');
-				// Optionally refresh stats to show new hours rendered
+				await fetchClockStatus();
 				fetchDashboardData();
 			} else {
 				const err = await res.json();
@@ -142,8 +136,43 @@
 			}
 		} catch (e) {
 			alert('Network error');
+		}
+	}
+
+	function triggerClockIn() {
+		modalConfig = {
+			title: 'Start Shift',
+			message: 'Are you ready to clock in? Your start time will be recorded now.',
+			type: 'info',
+			action: async () => {
+				await clockIn();
+			}
+		};
+		showModal = true;
+	}
+
+	function triggerClockOut() {
+		modalConfig = {
+			title: 'End Shift',
+			message:
+				'Are you sure you want to clock out? This will calculate your total hours for the day.',
+			type: 'danger',
+			action: async () => {
+				await clockOut();
+			}
+		};
+		showModal = true;
+	}
+
+	async function handleConfirm() {
+		isProcessing = true;
+		try {
+			if (modalConfig.action) await modalConfig.action();
+			showModal = false;
+		} catch (error) {
+			console.error('Action failed:', error);
 		} finally {
-			loadingAction = false;
+			isProcessing = false;
 		}
 	}
 
@@ -249,7 +278,6 @@
 				</svg>
 				View Profile
 			</a>
-
 			<a
 				href="/student/attendance"
 				class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow transition-colors hover:bg-green-600"
@@ -270,7 +298,6 @@
 				</svg>
 				View Attendance
 			</a>
-
 			<a
 				href="/student/journals"
 				class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow transition-colors hover:bg-green-600"
@@ -315,14 +342,14 @@
 						<span
 							class="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-red-500"
 						>
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-								><path
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
 									d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
-								/></svg
-							>
+								/>
+							</svg>
 						</span>
 						<h3 class="font-bold text-gray-700">Announcements</h3>
 					</div>
@@ -349,8 +376,8 @@
 			<div class="flex flex-col gap-4">
 				<div class="grid flex-shrink-0 grid-cols-2 gap-4">
 					<button
-						onclick={handleClockOut}
-						disabled={loadingAction || clockStatus !== 'clocked_in'}
+						onclick={triggerClockOut}
+						disabled={clockStatus !== 'clocked_in'}
 						class={`flex w-full items-center justify-center rounded-lg border py-3 text-sm font-semibold shadow-sm transition-colors 
                         ${
 													clockStatus === 'clocked_in'
@@ -358,12 +385,12 @@
 														: 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
 												}`}
 					>
-						{#if loadingAction && clockStatus === 'clocked_in'}...{:else}Clock Out{/if}
+						Clock Out
 					</button>
 
 					<button
-						onclick={handleClockIn}
-						disabled={loadingAction || clockStatus !== 'not_started'}
+						onclick={triggerClockIn}
+						disabled={clockStatus !== 'not_started'}
 						class={`flex w-full items-center justify-center rounded-lg py-3 text-sm font-semibold shadow transition-colors
                         ${
 													clockStatus === 'not_started'
@@ -371,7 +398,7 @@
 														: 'cursor-not-allowed bg-gray-200 text-gray-400'
 												}`}
 					>
-						{#if loadingAction && clockStatus === 'not_started'}...{:else}Clock In{/if}
+						Clock In
 					</button>
 				</div>
 
@@ -440,3 +467,13 @@
 		</div>
 	</div>
 </div>
+
+<ConfirmModal
+	isOpen={showModal}
+	title={modalConfig.title}
+	message={modalConfig.message}
+	type={modalConfig.type}
+	loading={isProcessing}
+	on:confirm={handleConfirm}
+	on:close={() => (showModal = false)}
+/>
