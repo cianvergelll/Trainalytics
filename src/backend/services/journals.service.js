@@ -235,3 +235,13 @@ export async function getStudentJournalLogs(studentId, page = 1, limit = 10, sea
         totalPages: Math.ceil(total / limit)
     };
 }
+
+export async function addJournalFeedback(journalId, adminId, message) {
+    const [result] = await pool.query(
+        `INSERT INTO im_cec_journal_feedback 
+        (JournalID, AdminID, Message) 
+        VALUES (?, ?, ?)`,
+        [journalId, adminId, message]
+    );
+    return result.insertId;
+}
