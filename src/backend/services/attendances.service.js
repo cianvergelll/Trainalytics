@@ -68,7 +68,7 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
     const offset = (page - 1) * limit;
 
     // STEP A: Fetch Student Profile
-    const queryStudent = `SELECT StudentName, CompanyName, Section, TargetHours, TotalHours, RemainingHours FROM im_cec_students WHERE StudentID = ?`;
+    const queryStudent = `SELECT StudentName, CompanyName, Section, TargetHours, TotalHours, RemainingHours, SupervisorName FROM im_cec_students WHERE StudentID = ?`;
 
     const [studentRows] = await pool.query(queryStudent, [studentId]);
 
@@ -93,6 +93,7 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
             TargetHours: target.toFixed(2),
             TotalHours: currentTotal.toFixed(2),
             RemainingHours: (target - currentTotal).toFixed(2),
+            SupervisorName: s.SupervisorName,
 
             // camelCase aliases
             name: s.StudentName,
@@ -100,7 +101,8 @@ export async function getStudentAttendancePaginated(studentId, page, limit) {
             section: s.Section,
             targetHours: target.toFixed(2),
             totalHours: currentTotal.toFixed(2),
-            remainingHours: (target - currentTotal).toFixed(2)
+            remainingHours: (target - currentTotal).toFixed(2),
+            supervisorName: s.SupervisorName
         };
     } else {
         studentObj = {
