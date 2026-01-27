@@ -114,7 +114,31 @@ export async function getStudentComplaintsPaginated(studentId, page = 1, limit =
     return {
         complaints,
         total,
-        currentPage: page, // Added to match frontend expectation
+        currentPage: page,
         totalPages: Math.ceil(total / limit)
     };
+}
+
+export async function createComplaint(complaintData) {
+    const { studentId, title, description, date } = complaintData;
+
+    const [student] = await pool.query(
+        'SELECT SchoolID, DepartmentID FROM im_cec_students WHERE StudentID = ?',
+        [studentId]
+    );
+
+    if (student.length === 0) {
+        throw new Error('Student profile not found.');
+    }
+
+    const { SchoolID, DepartmentID } = student[0];
+
+    const [result] = await pool.query(
+        `INSERT INTO im_cec_complaints 
+        (StudentID, SchoolID, DepartmentID, Title, Description, Date, Status) 
+        VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+        [studentId, SchoolID, DepartmentID, title, description, date]
+    );
+
+    return { id: result.insertId, status: 'pending' };
 }

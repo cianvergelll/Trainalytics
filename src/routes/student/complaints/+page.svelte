@@ -4,6 +4,7 @@
 	import SideNav from '$lib/components/SideNav.svelte';
 	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
 	import ViewComplaintModal from '$lib/components/ViewComplaintModal.svelte';
+	import AddComplaintModal from '$lib/components/AddComplaintModal.svelte';
 
 	let complaints = $state([]);
 	let currentPage = $state(1);
@@ -14,13 +15,20 @@
 	let error = $state('');
 	let successMessage = $state('');
 
-	// Modals
 	let showViewModal = $state(false);
 	let showArchiveModal = $state(false);
 	let selectedComplaint = $state(null);
 	let complaintToArchiveId = $state(null);
+	let showAddModal = $state(false);
 
-	// --- CACHE HELPER ---
+	function handleSuccess() {
+		showAddModal = false;
+		clearComplaintCache();
+		fetchComplaints(1, searchTerm);
+		successMessage = 'Complaint filed successfully!';
+		setTimeout(() => (successMessage = ''), 3000);
+	}
+
 	function clearComplaintCache() {
 		Object.keys(sessionStorage).forEach((key) => {
 			if (key.startsWith('student_complaints')) {
@@ -29,7 +37,6 @@
 		});
 	}
 
-	// --- FETCH DATA ---
 	async function fetchComplaints(page, search = '') {
 		const params = new URLSearchParams({ page, limit, search: search });
 		const queryString = params.toString();
@@ -46,7 +53,6 @@
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			// MODIFIED: Pointing to student-specific endpoint
 			const res = await fetch(`/api/complaints/my-complaints?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
@@ -71,7 +77,6 @@
 		}
 	}
 
-	// --- HANDLERS ---
 	function handleView(complaint) {
 		selectedComplaint = complaint;
 		showViewModal = true;
@@ -97,7 +102,6 @@
 			if (res.ok) {
 				showArchiveModal = false;
 
-				// --- IMPLEMENTED CACHE CLEARING ---
 				clearComplaintCache();
 
 				successMessage = 'Complaint archived successfully.';
@@ -118,7 +122,6 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			// --- IMPLEMENTED CACHE CLEARING ON SEARCH ---
 			clearComplaintCache();
 			fetchComplaints(1, searchTerm);
 		}, 300);
@@ -195,6 +198,7 @@
 				</div>
 
 				<button
+					onclick={() => (showAddModal = true)}
 					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white transition-colors hover:bg-green-600"
 				>
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -381,3 +385,9 @@
 		</div>
 	</div>
 </div>
+
+<AddComplaintModal
+	show={showAddModal}
+	on:close={() => (showAddModal = false)}
+	on:success={handleSuccess}
+/>

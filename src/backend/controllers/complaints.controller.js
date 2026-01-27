@@ -50,7 +50,6 @@ export async function getMyComplaints(req, res) {
         const user = req.user;
         let studentId = user.Extra1;
 
-        // Fetch StudentID from DB if not in session (Matching Journals logic)
         if (!studentId && user.role === 'student') {
             const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
             studentId = rows[0]?.Extra1;
@@ -71,5 +70,35 @@ export async function getMyComplaints(req, res) {
     } catch (err) {
         console.error('Failed to fetch student complaints:', err);
         res.status(500).json({ error: 'Failed to fetch your complaints.' });
+    }
+}
+
+export async function fileComplaint(req, res) {
+    try {
+        const user = req.user;
+        let studentId = user.Extra1;
+
+        if (!studentId && user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            studentId = rows[0]?.Extra1;
+        }
+
+        const { title, description, date } = req.body;
+
+        if (!studentId) {
+            return res.status(400).json({ error: 'Student ID not found for this account.' });
+        }
+
+        const newComplaint = await complaintsService.createComplaint({
+            studentId,
+            title,
+            description,
+            date
+        });
+
+        res.status(201).json(newComplaint);
+    } catch (err) {
+        console.error('File complaint controller error:', err);
+        res.status(500).json({ error: err.message || 'Failed to submit complaint.' });
     }
 }
