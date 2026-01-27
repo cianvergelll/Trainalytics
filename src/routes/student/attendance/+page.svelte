@@ -22,9 +22,46 @@
 	let loading = $state(true);
 	let error = $state('');
 
+	function clearAttendanceCache() {
+		Object.keys(sessionStorage).forEach((key) => {
+			if (key.startsWith('student_attendance_')) {
+				sessionStorage.removeItem(key);
+			}
+		});
+	}
+
+	function mapAttendanceData(data, myStudentId, page) {
+		// 1. Map Student Info
+		const s = data.student || {};
+		studentInfo = {
+			name: s.name || s.StudentName || 'Unknown',
+			studentId: myStudentId,
+			company: s.company || s.CompanyName || 'N/A',
+			supervisor: s.SupervisorName || 'N/A',
+			targetHours: s.targetHours || 0,
+			totalRendered: s.totalHours || 0,
+			remainingHours: s.remainingHours || 0,
+			isActive: s.IsActive ?? 1
+		};
+
+		// 2. Map Records
+		attendanceRecords = (data.records || []).map((r) => ({
+			date: r.Date,
+			timeIn: r.TimeIn,
+			timeOut: r.TimeOut,
+			totalHours: r.HoursRendered,
+			status: r.Status
+		}));
+
+		// 3. Pagination
+		const totalItems = data.total || 0;
+		totalPages = Math.ceil(totalItems / limit) || 1;
+		currentPage = page;
+	}
+
 	// --- API Logic ---
 	async function fetchAttendanceData(page) {
-		loading = true; // Set loading true on fetch start
+		loading = true;
 		try {
 			const token = localStorage.getItem('sessionToken');
 			if (!token) {
@@ -47,43 +84,31 @@
 				return;
 			}
 
-			// 2. Fetch Attendance Records
+			// --- CHECK CACHE ---
 			const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
-			const res = await fetch(`/api/attendances/student/${myStudentId}?${params.toString()}`, {
+			const queryString = params.toString();
+			const cacheKey = `student_attendance_${myStudentId}_${queryString}`;
+			const cachedData = sessionStorage.getItem(cacheKey);
+
+			if (cachedData) {
+				const data = JSON.parse(cachedData);
+				mapAttendanceData(data, myStudentId, page);
+				loading = false;
+				return;
+			}
+
+			// 2. Fetch Attendance Records if not in cache
+			const res = await fetch(`/api/attendances/student/${myStudentId}?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
 			if (res.ok) {
 				const data = await res.json();
 
-				// --- MAPPING DATA TO MATCH YOUR TEMPLATE ---
+				// SAVE TO CACHE
+				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 
-				// 1. Map Student Info
-				const s = data.student || {};
-				studentInfo = {
-					name: s.name || s.StudentName || 'Unknown',
-					studentId: myStudentId,
-					company: s.company || s.CompanyName || 'N/A',
-					supervisor: s.SupervisorName || 'N/A', // Backend might need update to send this
-					targetHours: s.targetHours || 0,
-					totalRendered: s.totalHours || 0, // Backend 'totalHours' is the rendered sum
-					remainingHours: s.remainingHours || 0,
-					isActive: s.IsActive ?? 1
-				};
-
-				// 2. Map Records (Backend sends PascalCase, Template needs camelCase)
-				attendanceRecords = (data.records || []).map((r) => ({
-					date: r.Date,
-					timeIn: r.TimeIn,
-					timeOut: r.TimeOut,
-					totalHours: r.HoursRendered, // Use the numeric value
-					status: r.Status
-				}));
-
-				// 3. Pagination
-				const totalItems = data.total || 0;
-				totalPages = Math.ceil(totalItems / limit) || 1;
-				currentPage = page;
+				mapAttendanceData(data, myStudentId, page);
 			} else {
 				error = 'Failed to load attendance records.';
 			}
@@ -116,7 +141,6 @@
 
 	function getProgressPercentage() {
 		if (!studentInfo.targetHours || studentInfo.targetHours == 0) return 0;
-		// Ensure values are numbers
 		const total = Number(studentInfo.totalRendered) || 0;
 		const target = Number(studentInfo.targetHours) || 1;
 		const pct = (total / target) * 100;
@@ -130,7 +154,7 @@
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
 	<div class="h-full w-1/5 flex-shrink-0">
-		<SideNav />
+		<SideNav activePage="attendance" />
 	</div>
 
 	<div class="flex h-full flex-1 flex-col overflow-hidden">
@@ -262,9 +286,8 @@
 											<td
 												colspan="5"
 												class="px-6 py-8 text-center text-sm font-medium text-gray-500"
+												>No attendance records found.</td
 											>
-												No attendance records found.
-											</td>
 										</tr>
 									{:else}
 										{#each attendanceRecords as record}
@@ -304,32 +327,24 @@
 									onclick={() => changePage(currentPage - 1)}
 									disabled={currentPage === 1}
 									class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
+									>Prev</button
 								>
-									Prev
-								</button>
-
 								{#each Array(totalPages) as _, i}
 									{@const pageNum = i + 1}
 									<button
 										onclick={() => changePage(pageNum)}
 										class:bg-green-500={currentPage === pageNum}
 										class:text-white={currentPage === pageNum}
-										class:hover:bg-green-600={currentPage === pageNum}
-										class:text-gray-900={currentPage !== pageNum}
-										class:hover:bg-gray-50={currentPage !== pageNum}
-										class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset"
+										class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
+										>{pageNum}</button
 									>
-										{pageNum}
-									</button>
 								{/each}
-
 								<button
 									onclick={() => changePage(currentPage + 1)}
 									disabled={currentPage === totalPages}
 									class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
+									>Next</button
 								>
-									Next
-								</button>
 							</nav>
 						</div>
 					</div>

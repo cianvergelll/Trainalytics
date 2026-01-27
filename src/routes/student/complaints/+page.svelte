@@ -20,6 +20,15 @@
 	let selectedComplaint = $state(null);
 	let complaintToArchiveId = $state(null);
 
+	// --- CACHE HELPER ---
+	function clearComplaintCache() {
+		Object.keys(sessionStorage).forEach((key) => {
+			if (key.startsWith('student_complaints')) {
+				sessionStorage.removeItem(key);
+			}
+		});
+	}
+
 	// --- FETCH DATA ---
 	async function fetchComplaints(page, search = '') {
 		const params = new URLSearchParams({ page, limit, search: search });
@@ -37,7 +46,8 @@
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch(`/api/complaints?${queryString}`, {
+			// MODIFIED: Pointing to student-specific endpoint
+			const res = await fetch(`/api/complaints/my-complaints?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
@@ -53,12 +63,7 @@
 				totalPages = data.totalPages;
 				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
-				// Fallback mock data if API fails/doesn't exist yet
-				complaints = [
-					{ ID: 1, Concern: 'Aircon leakage in Lab 2', Date: '2026-01-20', Status: 'Pending' },
-					{ ID: 2, Concern: 'Missing OJT Allowance', Date: '2026-01-15', Status: 'Resolved' },
-					{ ID: 3, Concern: 'Conflict in Schedule', Date: '2026-01-10', Status: 'Rejected' }
-				];
+				error = 'Failed to load complaints.';
 			}
 		} catch (e) {
 			console.error(e);
@@ -74,7 +79,6 @@
 
 	function handleEdit(complaint) {
 		alert(`Edit functionality for: ${complaint.Concern}`);
-		// logic to open edit modal goes here
 	}
 
 	function handleArchive(id) {
@@ -83,10 +87,28 @@
 	}
 
 	async function confirmArchive() {
-		// Mock archive success
-		showArchiveModal = false;
-		successMessage = 'Complaint archived successfully.';
-		setTimeout(() => (successMessage = ''), 3000);
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/complaints/archive/${complaintToArchiveId}`, {
+				method: 'PATCH',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (res.ok) {
+				showArchiveModal = false;
+
+				// --- IMPLEMENTED CACHE CLEARING ---
+				clearComplaintCache();
+
+				successMessage = 'Complaint archived successfully.';
+				fetchComplaints(1, searchTerm);
+				setTimeout(() => (successMessage = ''), 3000);
+			} else {
+				error = 'Failed to archive complaint.';
+			}
+		} catch (e) {
+			error = 'An error occurred.';
+		}
 	}
 
 	onMount(() => {
@@ -96,7 +118,8 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			sessionStorage.clear();
+			// --- IMPLEMENTED CACHE CLEARING ON SEARCH ---
+			clearComplaintCache();
 			fetchComplaints(1, searchTerm);
 		}, 300);
 	}
@@ -128,7 +151,7 @@
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
 	<div class="h-full w-1/5 flex-shrink-0">
-		<SideNav />
+		<SideNav activePage="complaints" />
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
@@ -216,7 +239,9 @@
 								<tr class="border-b border-gray-400 transition-colors hover:bg-gray-50">
 									<td class="px-6 py-4 text-sm font-medium text-gray-900">{comp.Concern}</td>
 
-									<td class="px-6 py-4 text-sm text-gray-500">{comp.Date}</td>
+									<td class="px-6 py-4 text-sm text-gray-500">
+										{new Date(comp.Date).toLocaleDateString()}
+									</td>
 
 									<td class="px-6 py-4 text-center">
 										{#if comp.Status?.toLowerCase() === 'resolved'}

@@ -86,3 +86,35 @@ export async function updateComplaintStatus(complaintId, newStatus) {
 
     return { id: complaintId, status: newStatus };
 }
+
+export async function getStudentComplaintsPaginated(studentId, page = 1, limit = 10, searchTerm = '') {
+    const offset = (page - 1) * limit;
+    let baseQuery = `
+        FROM im_cec_complaints
+        WHERE StudentID = ?
+    `;
+    const params = [studentId];
+
+    if (searchTerm) {
+        baseQuery += ' AND (Title LIKE ? OR Description LIKE ?)';
+        const searchQuery = `%${searchTerm}%`;
+        params.push(searchQuery, searchQuery);
+    }
+
+    const [[{ total }]] = await pool.query(`SELECT COUNT(*) as total ${baseQuery}`, params);
+
+    const [complaints] = await pool.query(
+        `SELECT ID, Title as Concern, Description, Date, Status
+        ${baseQuery}
+        ORDER BY Date DESC
+        LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+    );
+
+    return {
+        complaints,
+        total,
+        currentPage: page, // Added to match frontend expectation
+        totalPages: Math.ceil(total / limit)
+    };
+}

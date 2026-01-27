@@ -1,4 +1,5 @@
 import * as complaintsService from '../services/complaints.service.js';
+import { pool } from '../../config/db.js';
 
 export async function getComplaints(req, res) {
     try {
@@ -41,5 +42,34 @@ export async function updateStatus(req, res) {
             return res.status(400).json({ error: err.message });
         }
         res.status(500).json({ error: 'Server error updating status.' });
+    }
+}
+
+export async function getMyComplaints(req, res) {
+    try {
+        const user = req.user;
+        let studentId = user.Extra1;
+
+        // Fetch StudentID from DB if not in session (Matching Journals logic)
+        if (!studentId && user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            studentId = rows[0]?.Extra1;
+        }
+
+        if (!studentId) {
+            return res.status(400).json({ error: 'Student ID not found for this account.' });
+        }
+
+        const page = parseInt(req.query.page || '1', 10);
+        const limit = parseInt(req.query.limit || '10', 10);
+        const searchTerm = req.query.search || '';
+
+        const data = await complaintsService.getStudentComplaintsPaginated(
+            studentId, page, limit, searchTerm
+        );
+        res.json(data);
+    } catch (err) {
+        console.error('Failed to fetch student complaints:', err);
+        res.status(500).json({ error: 'Failed to fetch your complaints.' });
     }
 }

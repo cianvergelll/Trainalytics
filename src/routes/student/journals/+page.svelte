@@ -40,6 +40,14 @@
 		sections: []
 	});
 
+	function clearJournalCache() {
+		Object.keys(sessionStorage).forEach((key) => {
+			if (key.startsWith('student_journals_')) {
+				sessionStorage.removeItem(key);
+			}
+		});
+	}
+
 	async function init() {
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -73,21 +81,35 @@
 		if (!studentId) return;
 		loading = true;
 
+		const params = new URLSearchParams({
+			page: page.toString(),
+			limit: limit.toString(),
+			search: searchTerm,
+			archived: showArchived.toString()
+		});
+
+		if (selectedFilters.status.length > 0) {
+			params.append('status', selectedFilters.status.join(','));
+		}
+
+		const queryString = params.toString();
+		const cacheKey = `student_journals_${studentId}_${queryString}`;
+		const cachedData = sessionStorage.getItem(cacheKey);
+
+		// --- CHECK CACHE ---
+		if (cachedData) {
+			const data = JSON.parse(cachedData);
+			journals = data.logs || [];
+			const totalItems = data.total || 0;
+			totalPages = Math.ceil(totalItems / limit) || 1;
+			currentPage = page;
+			loading = false;
+			return;
+		}
+
 		try {
 			const token = localStorage.getItem('sessionToken');
-
-			const params = new URLSearchParams({
-				page: page.toString(),
-				limit: limit.toString(),
-				search: searchTerm,
-				archived: showArchived.toString()
-			});
-
-			if (selectedFilters.status.length > 0) {
-				params.append('status', selectedFilters.status.join(','));
-			}
-
-			const res = await fetch(`/api/journals/student/${studentId}?${params.toString()}`, {
+			const res = await fetch(`/api/journals/student/${studentId}?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
@@ -97,6 +119,9 @@
 				const totalItems = data.total || 0;
 				totalPages = Math.ceil(totalItems / limit) || 1;
 				currentPage = page;
+
+				// --- SAVE TO CACHE ---
+				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
 				journals = [];
 			}
@@ -110,10 +135,8 @@
 
 	async function handleAddJournal(event) {
 		const journalData = event.detail;
-
 		try {
 			const token = localStorage.getItem('sessionToken');
-
 			const payload = { ...journalData, studentId };
 
 			const res = await fetch('/api/journals', {
@@ -128,6 +151,7 @@
 			if (res.ok) {
 				showAddJournalModal = false;
 				successMessage = 'Journal entry submitted successfully.';
+				clearJournalCache(); // Invalidate cache
 				setTimeout(() => (successMessage = ''), 3000);
 				fetchJournals(1);
 			} else {
@@ -158,6 +182,7 @@
 				showAddJournalModal = false;
 				selectedJournal = null;
 				successMessage = 'Journal updated successfully.';
+				clearJournalCache(); // Invalidate cache
 				setTimeout(() => (successMessage = ''), 3000);
 				fetchJournals(currentPage);
 			} else {
@@ -223,9 +248,8 @@
 				successMessage = showArchived
 					? 'Journal restored successfully.'
 					: 'Journal archived successfully.';
-
+				clearJournalCache();
 				setTimeout(() => (successMessage = ''), 3000);
-
 				fetchJournals(currentPage);
 			} else {
 				alert('Failed to update archive status.');
@@ -298,7 +322,7 @@
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
 	<div class="h-full w-1/5 flex-shrink-0">
-		<SideNav />
+		<SideNav activePage="journals" />
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
@@ -328,7 +352,7 @@
 							bind:value={searchTerm}
 							oninput={onSearchInput}
 						/>
-						<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+						<div class="absolute inset-y-0 left-0 flex items-center pl-3">
 							<svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
 								<path
 									fill-rule="evenodd"
@@ -394,17 +418,17 @@
 
 			<div class="flex-grow overflow-auto rounded-lg border border-gray-400">
 				<table class="min-w-full table-auto text-left">
-					<thead class="sticky top-0 border-b border-gray-400 bg-gray-50">
+					<thead class="sticky top-0 border-b border-gray-400 bg-gray-50 shadow-sm">
 						<tr>
 							<th class="px-4 py-3 text-sm font-bold text-black">Date</th>
 							<th class="px-4 py-3 text-sm font-bold text-black">Status</th>
 							<th class="px-4 py-3 text-sm font-bold text-black">Title</th>
 							<th class="px-4 py-3 text-sm font-bold text-black">Description</th>
 							<th class="px-4 py-3 text-sm font-bold text-black">Date Approved</th>
-							<th class="px-4 py-3 text-sm font-bold text-black">Action</th>
+							<th class="px-4 py-3 text-center text-sm font-bold text-black">Action</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-400">
+					<tbody class="divide-y divide-gray-200 bg-white">
 						{#if loading}
 							<tr>
 								<td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
@@ -419,13 +443,13 @@
 							</tr>
 						{:else}
 							{#each journals as journal (journal.ID || journal.id)}
-								<tr class="hover:bg-gray-50">
+								<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50">
 									<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
 										{journal.Date ? new Date(journal.Date).toLocaleDateString() : '-'}
 									</td>
 									<td class="px-4 py-3 text-sm whitespace-nowrap">
 										<span
-											class={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClass(journal.Status)} capitalize`}
+											class={`rounded-full px-3 py-1 text-[11px] font-bold ${getStatusClass(journal.Status)} tracking-wider uppercase`}
 										>
 											{journal.Status || 'Pending'}
 										</span>
@@ -433,7 +457,7 @@
 									<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
 										<span class="font-medium">{journal.Title || 'No Title'}</span>
 									</td>
-									<td class="max-w-xs truncate px-4 py-3 text-sm whitespace-nowrap text-gray-900">
+									<td class="max-w-xs truncate px-4 py-3 text-sm text-gray-500">
 										{journal.Description || ''}
 									</td>
 									<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
@@ -443,12 +467,12 @@
 											<span class="text-gray-400">N/A</span>
 										{/if}
 									</td>
-									<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-900">
-										<div class="flex items-center gap-2">
+									<td class="px-4 py-3 text-sm">
+										<div class="flex items-center justify-center gap-3">
 											<button
-												aria-label="View Journal"
 												onclick={() => goto(`/student/journals/view?id=${journal.ID}`)}
-												class="text-blue-600 hover:text-blue-800"
+												class="text-blue-600 transition-colors hover:text-blue-800"
+												title="View Journal"
 											>
 												<svg
 													xmlns="http://www.w3.org/2000/svg"
@@ -474,7 +498,7 @@
 											{#if !showArchived}
 												<button
 													onclick={() => handleEdit(journal)}
-													class="text-amber-600 transition-colors duration-200 hover:text-amber-800"
+													class="text-amber-600 transition-colors hover:text-amber-800"
 													title="Edit Journal"
 												>
 													<svg
@@ -483,7 +507,7 @@
 														viewBox="0 0 24 24"
 														stroke-width="2"
 														stroke="currentColor"
-														class="h-5 w-5"
+														class="size-5"
 													>
 														<path
 															stroke-linecap="round"
@@ -496,8 +520,8 @@
 
 											<button
 												onclick={() => handleArchive(journal.ID)}
-												class={`transition-colors duration-200 ${showArchived ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'}`}
-												title={showArchived ? 'Restore Journal' : 'Archive Journal'}
+												class={`${showArchived ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'} transition-colors`}
+												title={showArchived ? 'Restore' : 'Archive'}
 											>
 												{#if showArchived}
 													<svg
@@ -541,13 +565,14 @@
 			</div>
 
 			<div class="mt-auto flex items-center justify-center pt-4">
-				<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+				<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm">
 					<button
 						onclick={() => changePage(currentPage - 1)}
 						disabled={currentPage === 1}
 						class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
-						>Prev</button
 					>
+						Prev
+					</button>
 					{#each Array(totalPages) as _, i}
 						{@const page = i + 1}
 						<button
@@ -555,15 +580,17 @@
 							class:bg-green-500={currentPage === page}
 							class:text-white={currentPage === page}
 							class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
-							>{page}</button
 						>
+							{page}
+						</button>
 					{/each}
 					<button
 						onclick={() => changePage(currentPage + 1)}
 						disabled={currentPage === totalPages}
 						class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
-						>Next</button
 					>
+						Next
+					</button>
 				</nav>
 			</div>
 		</div>
