@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import SideNav from '$lib/components/SideNav.svelte';
 	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
-	import ViewComplaintModal from '$lib/components/ViewComplaintModal.svelte';
+	import ViewStudentComplaintModal from '$lib/components/ViewStudentComplaintModal.svelte';
 	import AddComplaintModal from '$lib/components/AddComplaintModal.svelte';
 
 	let complaints = $state([]);
@@ -78,7 +78,10 @@
 	}
 
 	function handleView(complaint) {
-		selectedComplaint = complaint;
+		selectedComplaint = {
+			...complaint,
+			Title: complaint.Concern
+		};
 		showViewModal = true;
 	}
 
@@ -133,7 +136,7 @@
 	}
 </script>
 
-<ViewComplaintModal
+<ViewStudentComplaintModal
 	show={showViewModal}
 	complaint={selectedComplaint}
 	on:close={() => {
