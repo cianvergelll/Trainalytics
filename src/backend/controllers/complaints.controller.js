@@ -102,3 +102,28 @@ export async function fileComplaint(req, res) {
         res.status(500).json({ error: err.message || 'Failed to submit complaint.' });
     }
 }
+
+export async function editComplaint(req, res) {
+    try {
+        const { id } = req.params;
+        const { title, description, date } = req.body;
+        const user = req.user;
+
+        let studentId = user.Extra1;
+        if (!studentId && user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            studentId = rows[0]?.Extra1;
+        }
+
+        const success = await complaintsService.updateComplaintDetails(id, { title, description, date });
+
+        if (!success) {
+            return res.status(400).json({ error: 'Update failed. You can only edit "Pending" complaints or the complaint does not exist.' });
+        }
+
+        res.json({ message: 'Complaint updated successfully.' });
+    } catch (err) {
+        console.error('Edit Complaint Error:', err);
+        res.status(500).json({ error: 'Server error while updating complaint.' });
+    }
+}

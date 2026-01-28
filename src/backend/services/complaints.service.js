@@ -142,3 +142,14 @@ export async function createComplaint(complaintData) {
 
     return { id: result.insertId, status: 'pending' };
 }
+
+export async function updateComplaintDetails(id, data) {
+    const { title, description, date } = data;
+    const [result] = await pool.query(
+        `UPDATE im_cec_complaints 
+         SET Title = ?, Description = ?, Date = ?
+         WHERE ID = ? AND Status = 'pending'`,
+        [title, description, date, id]
+    );
+    return result.affectedRows > 0;
+}

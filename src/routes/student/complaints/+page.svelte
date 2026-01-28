@@ -23,9 +23,12 @@
 
 	function handleSuccess() {
 		showAddModal = false;
+		selectedComplaint = null;
 		clearComplaintCache();
 		fetchComplaints(1, searchTerm);
-		successMessage = 'Complaint filed successfully!';
+		successMessage = selectedComplaint
+			? 'Complaint updated successfully!'
+			: 'Complaint filed successfully!';
 		setTimeout(() => (successMessage = ''), 3000);
 	}
 
@@ -86,7 +89,18 @@
 	}
 
 	function handleEdit(complaint) {
-		alert(`Edit functionality for: ${complaint.Concern}`);
+		if (complaint.Status && complaint.Status.toLowerCase() !== 'pending') {
+			alert('You can only edit pending complaints.');
+			return;
+		}
+
+		selectedComplaint = complaint;
+		showAddModal = true;
+	}
+
+	function handleAddClick() {
+		selectedComplaint = null;
+		showAddModal = true;
 	}
 
 	function handleArchive(id) {
@@ -201,7 +215,7 @@
 				</div>
 
 				<button
-					onclick={() => (showAddModal = true)}
+					onclick={handleAddClick}
 					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white transition-colors hover:bg-green-600"
 				>
 					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -391,6 +405,10 @@
 
 <AddComplaintModal
 	show={showAddModal}
-	on:close={() => (showAddModal = false)}
+	complaintToEdit={selectedComplaint}
+	on:close={() => {
+		showAddModal = false;
+		selectedComplaint = null;
+	}}
 	on:success={handleSuccess}
 />
