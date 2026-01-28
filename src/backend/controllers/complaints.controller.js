@@ -127,3 +127,66 @@ export async function editComplaint(req, res) {
         res.status(500).json({ error: 'Server error while updating complaint.' });
     }
 }
+
+export async function getArchived(req, res) {
+    try {
+        let studentId = req.params.studentId;
+        const user = req.user;
+
+        if (!studentId || studentId === 'undefined' || studentId === 'null') {
+            if (user.role === 'student') {
+                const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+                if (rows.length > 0) {
+                    studentId = rows[0].Extra1;
+                }
+            }
+        }
+
+        if (!studentId) {
+            return res.status(400).json({ error: 'Student ID missing and could not be retrieved.' });
+        }
+
+        if (user.role === 'student') {
+            const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
+            if (rows.length === 0 || rows[0].Extra1 != studentId) {
+            }
+        }
+
+        const page = parseInt(req.query.page) || 1;
+        const search = req.query.search || '';
+
+        const data = await complaintsService.getArchivedComplaints(studentId, page, search);
+        res.json(data);
+    } catch (err) {
+        console.error('Get Archived Error:', err);
+        res.status(500).json({ error: 'Server error fetching archived complaints' });
+    }
+}
+
+export async function archive(req, res) {
+    try {
+        const { id } = req.params;
+        const success = await complaintsService.archiveComplaint(id);
+        if (!success) return res.status(404).json({ error: 'Complaint not found' });
+
+        res.json({ message: 'Complaint archived successfully' });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error archiving complaint' });
+    }
+}
+
+export async function restore(req, res) {
+    try {
+        const { id } = req.params;
+        const success = await complaintsService.unarchiveComplaint(id);
+
+        if (!success) {
+            return res.status(404).json({ error: 'Complaint not found or already active.' });
+        }
+
+        res.json({ message: 'Complaint restored successfully.' });
+    } catch (err) {
+        console.error('Restore Error:', err);
+        res.status(500).json({ error: 'Server error restoring complaint.' });
+    }
+}

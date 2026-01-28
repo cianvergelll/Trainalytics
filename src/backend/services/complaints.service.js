@@ -89,9 +89,10 @@ export async function updateComplaintStatus(complaintId, newStatus) {
 
 export async function getStudentComplaintsPaginated(studentId, page = 1, limit = 10, searchTerm = '') {
     const offset = (page - 1) * limit;
+
     let baseQuery = `
         FROM im_cec_complaints
-        WHERE StudentID = ?
+        WHERE StudentID = ? AND IsArchived = 0
     `;
     const params = [studentId];
 
@@ -150,6 +151,58 @@ export async function updateComplaintDetails(id, data) {
          SET Title = ?, Description = ?, Date = ?
          WHERE ID = ? AND Status = 'pending'`,
         [title, description, date, id]
+    );
+    return result.affectedRows > 0;
+}
+
+export async function getArchivedComplaints(studentId, page = 1, search = '') {
+    const limit = 10;
+    const offset = (page - 1) * limit;
+
+    const whereClause = `WHERE c.StudentID = ? AND c.IsArchived = 1 AND (c.Title LIKE ? OR c.Description LIKE ?)`;
+    const queryParams = [studentId, `%${search}%`, `%${search}%`];
+
+    const [rows] = await pool.query(
+        `SELECT c.*, s.StudentName 
+         FROM im_cec_complaints c
+         JOIN im_cec_students s ON c.StudentID = s.StudentID
+         ${whereClause}
+         ORDER BY c.Date DESC
+         LIMIT ? OFFSET ?`,
+        [...queryParams, limit, offset]
+    );
+
+    const [countResult] = await pool.query(
+        `SELECT COUNT(*) as total FROM im_cec_complaints c ${whereClause}`,
+        queryParams
+    );
+
+    const formattedRows = rows.map(row => ({
+        ...row,
+        Concern: row.Title,
+        StudentName: row.StudentName
+    }));
+
+    return {
+        complaints: formattedRows,
+        total: countResult[0].total,
+        totalPages: Math.ceil(countResult[0].total / limit),
+        currentPage: page
+    };
+}
+
+export async function archiveComplaint(id) {
+    const [result] = await pool.query(
+        `UPDATE im_cec_complaints SET IsArchived = 1 WHERE ID = ?`,
+        [id]
+    );
+    return result.affectedRows > 0;
+}
+
+export async function unarchiveComplaint(id) {
+    const [result] = await pool.query(
+        `UPDATE im_cec_complaints SET IsArchived = 0 WHERE ID = ?`,
+        [id]
     );
     return result.affectedRows > 0;
 }

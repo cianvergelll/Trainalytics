@@ -6,6 +6,7 @@
 	import ViewStudentComplaintModal from '$lib/components/ViewStudentComplaintModal.svelte';
 	import AddComplaintModal from '$lib/components/AddComplaintModal.svelte';
 
+	let activeTab = $state('active');
 	let complaints = $state([]);
 	let currentPage = $state(1);
 	let totalPages = $state(1);
@@ -20,6 +21,10 @@
 	let selectedComplaint = $state(null);
 	let complaintToArchiveId = $state(null);
 	let showAddModal = $state(false);
+
+	$effect(() => {
+		fetchComplaints(1, searchTerm);
+	});
 
 	function handleSuccess() {
 		showAddModal = false;
@@ -43,7 +48,7 @@
 	async function fetchComplaints(page, search = '') {
 		const params = new URLSearchParams({ page, limit, search: search });
 		const queryString = params.toString();
-		const cacheKey = `student_complaints?${queryString}`;
+		const cacheKey = `student_complaints_${activeTab}?${queryString}`;
 		const cachedData = sessionStorage.getItem(cacheKey);
 
 		if (cachedData) {
@@ -56,7 +61,14 @@
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch(`/api/complaints/my-complaints?${queryString}`, {
+
+			// Determine endpoint based on active tab
+			let endpoint =
+				activeTab === 'active'
+					? '/api/complaints/my-complaints'
+					: `/api/complaints/student/${JSON.parse(atob(token.split('.')[1])).Extra1}/archived`;
+
+			const res = await fetch(`${endpoint}?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
@@ -83,7 +95,7 @@
 	function handleView(complaint) {
 		selectedComplaint = {
 			...complaint,
-			Title: complaint.Concern
+			Title: complaint.Concern || complaint.Title
 		};
 		showViewModal = true;
 	}
@@ -111,16 +123,14 @@
 	async function confirmArchive() {
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch(`/api/complaints/archive/${complaintToArchiveId}`, {
-				method: 'PATCH',
+			const res = await fetch(`/api/complaints/${complaintToArchiveId}/archive`, {
+				method: 'PUT',
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
 			if (res.ok) {
 				showArchiveModal = false;
-
 				clearComplaintCache();
-
 				successMessage = 'Complaint archived successfully.';
 				fetchComplaints(1, searchTerm);
 				setTimeout(() => (successMessage = ''), 3000);
@@ -132,9 +142,29 @@
 		}
 	}
 
-	onMount(() => {
-		fetchComplaints(1, searchTerm);
-	});
+	async function handleRestore(id) {
+		if (!confirm('Are you sure you want to restore this complaint?')) return;
+
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch(`/api/complaints/${id}/restore`, {
+				method: 'PUT',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (res.ok) {
+				clearComplaintCache();
+				fetchComplaints(1, searchTerm);
+
+				successMessage = 'Complaint restored to active list.';
+				setTimeout(() => (successMessage = ''), 3000);
+			} else {
+				alert('Failed to restore complaint.');
+			}
+		} catch (e) {
+			alert('Network error.');
+		}
+	}
 
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
@@ -147,6 +177,13 @@
 	function changePage(newPage) {
 		if (newPage < 1 || newPage > totalPages) return;
 		fetchComplaints(newPage, searchTerm);
+	}
+
+	function switchTab(tab) {
+		if (activeTab === tab) return;
+		activeTab = tab;
+		currentPage = 1;
+		searchTerm = '';
 	}
 </script>
 
@@ -189,6 +226,31 @@
 			</p>
 		{/if}
 
+		<div class="mb-6 border-b border-gray-200">
+			<nav class="-mb-px flex gap-6">
+				<button
+					onclick={() => switchTab('active')}
+					class={`border-b-2 py-4 text-sm font-medium transition-colors ${
+						activeTab === 'active'
+							? 'border-green-500 text-green-600'
+							: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+					}`}
+				>
+					Active Complaints
+				</button>
+				<button
+					onclick={() => switchTab('archived')}
+					class={`border-b-2 py-4 text-sm font-medium transition-colors ${
+						activeTab === 'archived'
+							? 'border-green-500 text-green-600'
+							: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+					}`}
+				>
+					Archived
+				</button>
+			</nav>
+		</div>
+
 		<div class="flex min-h-0 flex-grow flex-col">
 			<div class="mb-4 flex items-center justify-between">
 				<div class="flex items-center gap-4">
@@ -214,17 +276,19 @@
 					</div>
 				</div>
 
-				<button
-					onclick={handleAddClick}
-					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white transition-colors hover:bg-green-600"
-				>
-					<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-						<path
-							d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
-						/>
-					</svg>
-					File Complaint
-				</button>
+				{#if activeTab === 'active'}
+					<button
+						onclick={handleAddClick}
+						class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white transition-colors hover:bg-green-600"
+					>
+						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+							<path
+								d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
+							/>
+						</svg>
+						File Complaint
+					</button>
+				{/if}
 			</div>
 
 			<div class="flex-grow overflow-auto rounded-lg border border-gray-400">
@@ -234,15 +298,12 @@
 							<th class="px-6 py-4 text-left text-sm font-bold tracking-wider text-black">
 								Concern
 							</th>
-
 							<th class="px-6 py-4 text-left text-sm font-bold tracking-wider text-black">
 								Date
 							</th>
-
 							<th class="px-6 py-4 text-center text-sm font-bold tracking-wider text-black">
 								Status
 							</th>
-
 							<th class="px-6 py-4 text-center text-sm font-bold tracking-wider text-black">
 								Action
 							</th>
@@ -251,14 +312,16 @@
 					<tbody class="divide-y divide-gray-100 bg-white">
 						{#if complaints.length === 0}
 							<tr>
-								<td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500"
-									>No complaints found.</td
-								>
+								<td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500">
+									No {activeTab} complaints found.
+								</td>
 							</tr>
 						{:else}
 							{#each complaints as comp (comp.ID)}
 								<tr class="border-b border-gray-400 transition-colors hover:bg-gray-50">
-									<td class="px-6 py-4 text-sm font-medium text-gray-900">{comp.Concern}</td>
+									<td class="px-6 py-4 text-sm font-medium text-gray-900"
+										>{comp.Concern || comp.Title}</td
+									>
 
 									<td class="px-6 py-4 text-sm text-gray-500">
 										{new Date(comp.Date).toLocaleDateString()}
@@ -282,6 +345,12 @@
 												class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800"
 											>
 												Rejected
+											</span>
+										{:else if comp.Status?.toLowerCase() === 'archived'}
+											<span
+												class="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-800"
+											>
+												Archived
 											</span>
 										{:else}
 											<span
@@ -320,47 +389,70 @@
 												</svg>
 											</button>
 
-											<button
-												onclick={() => handleEdit(comp)}
-												class="text-orange-500 transition-colors hover:text-orange-700"
-												title="Edit"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-5 w-5"
+											{#if activeTab === 'active'}
+												<button
+													onclick={() => handleEdit(comp)}
+													class="text-orange-500 transition-colors hover:text-orange-700"
+													title="Edit"
 												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-													/>
-												</svg>
-											</button>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+														/>
+													</svg>
+												</button>
 
-											<button
-												onclick={() => handleArchive(comp.ID)}
-												class="text-red-600 transition-colors hover:text-red-800"
-												title="Archive"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-5 w-5"
+												<button
+													onclick={() => handleArchive(comp.ID)}
+													class="text-red-600 transition-colors hover:text-red-800"
+													title="Archive"
 												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-													/>
-												</svg>
-											</button>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+														/>
+													</svg>
+												</button>
+											{:else}
+												<button
+													onclick={() => handleRestore(comp.ID)}
+													class="text-green-600 transition-colors hover:text-green-800"
+													title="Restore / Unarchive"
+												>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-5 w-5"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
+														/>
+													</svg>
+												</button>
+											{/if}
 										</div>
 									</td>
 								</tr>
