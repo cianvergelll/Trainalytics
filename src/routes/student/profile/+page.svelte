@@ -12,6 +12,14 @@
 	let studentData = $state({});
 	let originalData = $state({});
 
+	let uploadModal = $state({
+		show: false,
+		title: 'Uploading...',
+		message: 'Please wait while we process your file.',
+		isProcessing: false,
+		isSuccess: false
+	});
+
 	let documentList = [
 		{ name: 'Memorandum of Agreement', key: 'HasMOA', fileKey: 'MOA_File' },
 		{ name: 'Parent Waiver', key: 'HasWaiver', fileKey: 'Waiver_File' },
@@ -121,7 +129,14 @@
 		const file = event.target.files[0];
 		if (!file) return;
 
-		isSaving = true;
+		uploadModal = {
+			show: true,
+			title: 'Uploading...',
+			message: `Please wait while we process your ${docItem.name}.`,
+			isProcessing: true,
+			isSuccess: false
+		};
+
 		const formData = new FormData();
 		formData.append('file', file);
 
@@ -142,12 +157,23 @@
 			studentData[docItem.key] = 1;
 
 			await saveChanges();
-			alert(`${docItem.name} uploaded successfully!`);
+
+			uploadModal = {
+				show: true,
+				title: 'Success!',
+				message: `${docItem.name} has been uploaded successfully.`,
+				isProcessing: false,
+				isSuccess: true
+			};
 		} catch (e) {
 			console.error('Upload error:', e);
-			alert('Failed to upload document.');
-		} finally {
-			isSaving = false;
+			uploadModal = {
+				show: true,
+				title: 'Upload Failed',
+				message: 'Something went wrong. Please try again.',
+				isProcessing: false,
+				isSuccess: false
+			};
 		}
 	}
 
@@ -625,3 +651,65 @@
 		</div>
 	</div>
 </div>
+
+{#if uploadModal.show}
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+	>
+		<div
+			class="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-2xl ring-1 ring-gray-200"
+		>
+			{#if uploadModal.isProcessing}
+				<div class="mb-4 flex justify-center">
+					<div
+						class="h-12 w-12 animate-spin rounded-full border-4 border-green-500 border-t-transparent"
+					></div>
+				</div>
+			{:else}
+				<div class="mb-4 flex justify-center">
+					<div
+						class={`rounded-full p-3 ${uploadModal.isSuccess ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}
+					>
+						{#if uploadModal.isSuccess}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="3"
+								stroke="currentColor"
+								class="h-8 w-8"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+							</svg>
+						{:else}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="3"
+								stroke="currentColor"
+								class="h-8 w-8"
+							>
+								<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			<h3 class="text-xl font-bold text-gray-900">{uploadModal.title}</h3>
+			<p class="mt-2 text-sm text-gray-500">{uploadModal.message}</p>
+
+			{#if !uploadModal.isProcessing}
+				<div class="mt-6 flex justify-center">
+					<button
+						onclick={() => (uploadModal.show = false)}
+						class="w-full rounded-lg bg-green-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
+					>
+						OK
+					</button>
+				</div>
+			{/if}
+		</div>
+	</div>
+{/if}
