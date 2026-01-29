@@ -5,6 +5,7 @@
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
 	let studentId = $derived($page.url.searchParams.get('id'));
+	let companyOptions = $state([]);
 	let autoEdit = $derived($page.url.searchParams.get('edit') === 'true');
 
 	let isLoading = $state(true);
@@ -15,8 +16,14 @@
 	let studentData = $state({});
 	let originalData = $state({});
 
-	// Dynamic Document Mapping
-	// We map the UI Name to the Database Column Name
+	let isCompanyInvalid = $derived(
+		studentData.CompanyName &&
+			studentData.CompanyName !== 'None' &&
+			studentData.CompanyName !== 'N/A' &&
+			companyOptions.length > 0 &&
+			!companyOptions.some((c) => c.CompanyName === studentData.CompanyName)
+	);
+
 	let documentList = [
 		{ name: 'Memorandum of Agreement', key: 'HasMOA' },
 		{ name: 'Parent Waiver', key: 'HasWaiver' },
@@ -72,7 +79,33 @@
 		}
 	}
 
+	function handleCompanyChange(e) {
+		const val = e.target.value;
+		studentData.CompanyName = val;
+
+		const match = companyOptions.find((c) => c.CompanyName === val);
+
+		if (match) {
+			studentData.CompanyAddress = match.Address || '';
+		} else if (val === 'None' || val === 'N/A' || val === '') {
+			studentData.CompanyAddress = '';
+		}
+	}
+
 	async function saveChanges() {
+		const inputName = (studentData.CompanyName || '').trim();
+
+		const isValid =
+			inputName === '' ||
+			inputName === 'None' ||
+			inputName === 'N/A' ||
+			companyOptions.some((c) => c.CompanyName === inputName);
+
+		if (!isValid) {
+			alert(`"${inputName}" is not in the Company List.\nPlease select a valid company or "None".`);
+			return;
+		}
+
 		isSaving = true;
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -104,8 +137,23 @@
 		isEditing = false;
 	}
 
+	async function fetchCompanyOptions() {
+		try {
+			const token = localStorage.getItem('sessionToken');
+			const res = await fetch('/api/companies?archived=false', {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			if (res.ok) {
+				companyOptions = await res.json();
+			}
+		} catch (e) {
+			console.error('Failed to load companies', e);
+		}
+	}
+
 	onMount(() => {
 		fetchStudentDetails();
+		fetchCompanyOptions();
 	});
 
 	function handleBack() {
@@ -339,15 +387,35 @@
 								<div class="flex h-9 items-center justify-between">
 									<span class="self-center font-medium text-gray-500">Company Name:</span>
 									{#if isEditing}
-										<input
-											type="text"
-											bind:value={studentData.CompanyName}
-											class="w-1/2 rounded border-gray-300 px-2 py-1 text-right text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
-										/>
+										<div class="relative w-1/2">
+											<input
+												type="text"
+												list="company-list"
+												value={studentData.CompanyName}
+												oninput={handleCompanyChange}
+												placeholder="Select company..."
+												class="w-full rounded border px-2 py-1 text-right text-sm shadow-sm focus:ring-green-500
+                {isCompanyInvalid
+													? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+													: 'border-gray-300 focus:border-green-500'}"
+											/>
+											{#if isCompanyInvalid}
+												<p class="absolute top-full right-0 mt-1 text-[10px] text-red-500">
+													Must select from list
+												</p>
+											{/if}
+										</div>
+
+										<datalist id="company-list">
+											<option value="None">Unassigned / No Company</option>
+											{#each companyOptions as company}
+												<option value={company.CompanyName}>{company.Address || ''}</option>
+											{/each}
+										</datalist>
 									{:else}
-										<span class="font-semibold text-gray-900"
-											>{formatValue(studentData.CompanyName)}</span
-										>
+										<span class="font-semibold text-gray-900">
+											{formatValue(studentData.CompanyName)}
+										</span>
 									{/if}
 								</div>
 								<div class="flex h-9 items-center justify-between">
