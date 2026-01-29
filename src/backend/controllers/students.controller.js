@@ -1,5 +1,80 @@
+import cloudinary from '../../config/cloudinary.js';
 import * as studentsService from '../services/students.service.js';
 import { pool } from '../../config/db.js';
+
+const getCloudinaryDetails = (url) => {
+    if (!url) return null;
+
+    try {
+        const decodedUrl = decodeURIComponent(url);
+        const parts = decodedUrl.split('/');
+
+        const uploadIndex = parts.findIndex(p => p === 'upload');
+        if (uploadIndex === -1) return null;
+
+        const resourceType = parts[uploadIndex - 1];
+
+        let pathParts = parts.slice(uploadIndex + 1);
+        if (pathParts.length > 0 && pathParts[0].startsWith('v')) {
+            pathParts.shift();
+        }
+
+        let publicId = pathParts.join('/');
+
+        if (resourceType === 'image') {
+            const lastDotIndex = publicId.lastIndexOf('.');
+            if (lastDotIndex !== -1) {
+                publicId = publicId.substring(0, lastDotIndex);
+            }
+        }
+
+        return {
+            publicId,
+            resourceType
+        };
+    } catch (err) {
+        console.error('Cloudinary parse error:', err);
+        return null;
+    }
+};
+
+const handleCloudinaryDeletion = async (studentId, updates) => {
+    const fileColumns = [
+        'MOA_File', 'Waiver_File', 'Endorsement_File',
+        'Evaluation_File', 'Completion_File'
+    ];
+
+    const filesToRemove = Object.keys(updates).filter(key =>
+        fileColumns.includes(key) && updates[key] === null
+    );
+
+    if (filesToRemove.length > 0) {
+        const currentStudent = await studentsService.getStudentByStudentId(studentId);
+
+        if (currentStudent) {
+            for (const key of filesToRemove) {
+                const oldUrl = currentStudent[key];
+
+                if (oldUrl) {
+                    const details = getCloudinaryDetails(oldUrl);
+
+                    if (details && details.publicId) {
+                        console.log(`Deleting ${details.resourceType}: ${details.publicId}`);
+
+                        try {
+                            const result = await cloudinary.uploader.destroy(details.publicId, {
+                                resource_type: details.resourceType
+                            });
+                            console.log('Cloudinary Result:', result);
+                        } catch (cloudinaryErr) {
+                            console.error('Cloudinary Delete Error:', cloudinaryErr);
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
 
 export async function getStudents(req, res) {
     try {
@@ -173,13 +248,8 @@ export async function updateStudentDetails(req, res) {
             }
 
             const allowedPersonalFields = [
-                'StudentName',
-                'Gender',
-                'BirthDate',
-                'Section',
-                'Email',
-                'ContactNumber',
-                'ProfilePicture',
+                'StudentName', 'Gender', 'BirthDate', 'Section', 'Email',
+                'ContactNumber', 'ProfilePicture',
                 'HasMOA', 'MOA_File',
                 'HasWaiver', 'Waiver_File',
                 'HasEndorsement', 'Endorsement_File',
@@ -198,12 +268,16 @@ export async function updateStudentDetails(req, res) {
                 return res.json({ message: 'No valid personal details to update.' });
             }
 
+            await handleCloudinaryDeletion(id, filteredUpdates);
+
             const success = await studentsService.updateStudent(id, filteredUpdates);
             if (!success) {
                 return res.json({ message: 'Update failed or no changes detected.' });
             }
             return res.json({ message: 'Personal details updated successfully.' });
         }
+
+        await handleCloudinaryDeletion(id, updates);
 
         const success = await studentsService.updateStudent(id, updates);
         if (!success) {

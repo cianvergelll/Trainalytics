@@ -177,6 +177,59 @@
 		}
 	}
 
+	async function handleRemoveFile(docItem) {
+		if (!confirm(`Are you sure you want to remove the ${docItem.name}? This cannot be undone.`))
+			return;
+
+		uploadModal = {
+			show: true,
+			title: 'Removing File...',
+			message: 'Please wait while we update your records.',
+			isProcessing: true,
+			isSuccess: false
+		};
+
+		try {
+			const token = localStorage.getItem('sessionToken');
+
+			const updateBody = {
+				[docItem.fileKey]: null,
+				[docItem.key]: 0
+			};
+
+			const res = await fetch(`/api/students/${studentData.StudentID}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(updateBody)
+			});
+
+			if (!res.ok) throw new Error('Failed to remove file');
+
+			studentData[docItem.fileKey] = null;
+			studentData[docItem.key] = 0;
+
+			uploadModal = {
+				show: true,
+				title: 'Removed Successfully',
+				message: 'The file has been removed.',
+				isProcessing: false,
+				isSuccess: true
+			};
+		} catch (e) {
+			console.error(e);
+			uploadModal = {
+				show: true,
+				title: 'Error',
+				message: 'Failed to remove the file. Please try again.',
+				isProcessing: false,
+				isSuccess: false
+			};
+		}
+	}
+
 	function cancelEdit() {
 		studentData = { ...originalData };
 		isEditing = false;
@@ -574,7 +627,7 @@
 									</div>
 
 									<div class="flex items-center gap-2">
-										{#if studentData[doc.fileKey]}
+										{#if studentData[doc.key]}
 											<a
 												href={studentData[doc.fileKey]}
 												target="_blank"
@@ -604,11 +657,11 @@
 											</a>
 
 											<a
-												href={studentData[doc.fileKey].replace(
+												href={studentData[doc.fileKey]?.replace(
 													'/upload/',
 													'/upload/fl_attachment/'
 												)}
-												download="{doc.label}_{studentData.StudentID || 'Document'}"
+												download="{doc.name}_{studentData.StudentID || 'Document'}"
 												class="flex h-8 w-8 items-center justify-center rounded-md bg-green-50 text-green-600 transition-colors hover:bg-green-100"
 												title="Download File"
 											>
@@ -627,20 +680,41 @@
 													/>
 												</svg>
 											</a>
-										{/if}
 
-										<label
-											class={`flex h-8 cursor-pointer items-center justify-center rounded-md border px-3 text-xs font-bold shadow-sm transition-all ${studentData[doc.key] ? 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50' : 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'}`}
-										>
-											{studentData[doc.key] ? 'Replace' : 'Upload'}
-											<input
-												type="file"
-												accept=".pdf,image/*"
-												class="hidden"
-												onchange={(e) => handleFileUpload(e, doc)}
-												disabled={isSaving}
-											/>
-										</label>
+											<button
+												onclick={() => handleRemoveFile(doc)}
+												class="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
+												title="Remove File"
+											>
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke-width="2"
+													stroke="currentColor"
+													class="h-4 w-4"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														d="M6 18L18 6M6 6l12 12"
+													/>
+												</svg>
+											</button>
+										{:else}
+											<label
+												class="flex h-8 cursor-pointer items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md"
+											>
+												Upload
+												<input
+													type="file"
+													accept=".pdf,image/*"
+													class="hidden"
+													onchange={(e) => handleFileUpload(e, doc)}
+													disabled={isSaving}
+												/>
+											</label>
+										{/if}
 									</div>
 								</div>
 							{/each}
