@@ -12,12 +12,15 @@
 	let studentData = $state({});
 	let originalData = $state({});
 
+	let docToRemove = $state(null);
+
 	let uploadModal = $state({
 		show: false,
-		title: 'Uploading...',
-		message: 'Please wait while we process your file.',
+		title: '',
+		message: '',
 		isProcessing: false,
-		isSuccess: false
+		isSuccess: false,
+		isConfirmation: false
 	});
 
 	let documentList = [
@@ -177,24 +180,39 @@
 		}
 	}
 
-	async function handleRemoveFile(docItem) {
-		if (!confirm(`Are you sure you want to remove the ${docItem.name}? This cannot be undone.`))
-			return;
+	function triggerRemoveFile(docItem) {
+		docToRemove = docItem; // Remember which file
 
+		// Show the Confirmation Modal
+		uploadModal = {
+			show: true,
+			title: 'Remove Document?',
+			message: `Are you sure you want to remove the ${docItem.name}? This cannot be undone.`,
+			isProcessing: false,
+			isSuccess: false,
+			isConfirmation: true // Turn on confirmation mode
+		};
+	}
+
+	async function proceedWithRemove() {
+		if (!docToRemove) return;
+
+		// Switch modal to "Processing" state
 		uploadModal = {
 			show: true,
 			title: 'Removing File...',
 			message: 'Please wait while we update your records.',
 			isProcessing: true,
-			isSuccess: false
+			isSuccess: false,
+			isConfirmation: false
 		};
 
 		try {
 			const token = localStorage.getItem('sessionToken');
 
 			const updateBody = {
-				[docItem.fileKey]: null,
-				[docItem.key]: 0
+				[docToRemove.fileKey]: null,
+				[docToRemove.key]: 0
 			};
 
 			const res = await fetch(`/api/students/${studentData.StudentID}`, {
@@ -208,16 +226,21 @@
 
 			if (!res.ok) throw new Error('Failed to remove file');
 
-			studentData[docItem.fileKey] = null;
-			studentData[docItem.key] = 0;
+			// Update UI
+			studentData[docToRemove.fileKey] = null;
+			studentData[docToRemove.key] = 0;
 
+			// Switch modal to "Success" state
 			uploadModal = {
 				show: true,
 				title: 'Removed Successfully',
 				message: 'The file has been removed.',
 				isProcessing: false,
-				isSuccess: true
+				isSuccess: true,
+				isConfirmation: false
 			};
+
+			docToRemove = null; // Cleanup
 		} catch (e) {
 			console.error(e);
 			uploadModal = {
@@ -225,7 +248,8 @@
 				title: 'Error',
 				message: 'Failed to remove the file. Please try again.',
 				isProcessing: false,
-				isSuccess: false
+				isSuccess: false,
+				isConfirmation: false
 			};
 		}
 	}
@@ -682,7 +706,7 @@
 											</a>
 
 											<button
-												onclick={() => handleRemoveFile(doc)}
+												onclick={() => triggerRemoveFile(doc)}
 												class="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
 												title="Remove File"
 											>
@@ -739,6 +763,25 @@
 						class="h-12 w-12 animate-spin rounded-full border-4 border-green-500 border-t-transparent"
 					></div>
 				</div>
+			{:else if uploadModal.isConfirmation}
+				<div class="mb-4 flex justify-center">
+					<div class="rounded-full bg-yellow-100 p-3 text-yellow-600">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="h-8 w-8"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+							/>
+						</svg>
+					</div>
+				</div>
 			{:else}
 				<div class="mb-4 flex justify-center">
 					<div
@@ -774,16 +817,29 @@
 			<h3 class="text-xl font-bold text-gray-900">{uploadModal.title}</h3>
 			<p class="mt-2 text-sm text-gray-500">{uploadModal.message}</p>
 
-			{#if !uploadModal.isProcessing}
-				<div class="mt-6 flex justify-center">
+			<div class="mt-6 flex justify-center gap-3">
+				{#if uploadModal.isConfirmation}
 					<button
 						onclick={() => (uploadModal.show = false)}
-						class="w-full rounded-lg bg-green-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
+						class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+					>
+						Cancel
+					</button>
+					<button
+						onclick={proceedWithRemove}
+						class="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700"
+					>
+						Remove
+					</button>
+				{:else if !uploadModal.isProcessing}
+					<button
+						onclick={() => (uploadModal.show = false)}
+						class={`w-full rounded-lg py-2.5 text-sm font-semibold text-white shadow-sm transition-colors ${uploadModal.isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
 					>
 						OK
 					</button>
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</div>
 	</div>
 {/if}
