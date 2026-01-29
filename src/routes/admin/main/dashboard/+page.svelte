@@ -7,7 +7,6 @@
 	import AddStudentModal from '$lib/components/AddStudentModal.svelte';
 	import Chart from 'chart.js/auto';
 
-	// Updated stats structure to include processing
 	let stats = $state({
 		totalStudents: 0,
 		totalCompanies: 0,
@@ -74,7 +73,6 @@
 
 	async function fetchDashboardStats() {
 		error = '';
-		// Note: removed caching here temporarily so you see live updates immediately
 		try {
 			const token = localStorage.getItem('sessionToken');
 			const res = await fetch('/api/dashboard/stats', {
@@ -91,7 +89,6 @@
 			if (res.ok) {
 				const data = await res.json();
 				stats = data;
-				// Update session storage if needed
 				sessionStorage.setItem('dashboardStats', JSON.stringify(data));
 				updateCharts();
 			} else {
@@ -111,11 +108,9 @@
 			return;
 		}
 
-		// Destroy old charts
 		if (completionChartInstance) completionChartInstance.destroy();
 		if (internshipChartInstance) internshipChartInstance.destroy();
 
-		// 1. Completion Status Chart (Now with 3 Segments: Completed, Ongoing, Processing)
 		completionChartInstance = new Chart(completionChartCtx, {
 			type: 'pie',
 			data: {
@@ -128,7 +123,6 @@
 							stats.completionStats.ongoing,
 							stats.completionStats.processing
 						],
-						// Colors: Green, Yellow, Blue
 						backgroundColor: ['#10B981', '#FCD34D', '#3B82F6'],
 						hoverOffset: 4
 					}
@@ -141,7 +135,6 @@
 			}
 		});
 
-		// 2. Internship Status Chart (With Internship vs No Internship)
 		internshipChartInstance = new Chart(internshipChartCtx, {
 			type: 'pie',
 			data: {
@@ -150,7 +143,6 @@
 					{
 						label: 'Count',
 						data: [stats.internshipStats.withInternship, stats.internshipStats.noInternship],
-						// Colors: Green, Red
 						backgroundColor: ['#10B981', '#EF4444'],
 						hoverOffset: 4
 					}
@@ -263,9 +255,11 @@
 			.fill(null)
 			.concat(Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1))
 	);
-	
-	let isDarkMode = $state(false); 
-    function toggleTheme() { isDarkMode = !isDarkMode; }
+
+	let isDarkMode = $state(false);
+	function toggleTheme() {
+		isDarkMode = !isDarkMode;
+	}
 </script>
 
 <svelte:head>
