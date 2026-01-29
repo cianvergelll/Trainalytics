@@ -1,34 +1,31 @@
 import cloudinary from '../../config/cloudinary.js';
 import fs from 'fs';
-
+import path from 'path';
 export async function uploadFile(req, res) {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // --- DEBUGGING ---
         console.log("UPLOADING:", req.file.originalname);
-        console.log("MIMETYPE:", req.file.mimetype);
-
-        // --- STRONGER CHECK ---
-        // Check BOTH the mimetype AND the file extension
         const isMimePdf = req.file.mimetype === 'application/pdf';
         const isExtPdf = path.extname(req.file.originalname).toLowerCase() === '.pdf';
 
-        // If EITHER says it's a PDF, treat it as 'raw'
         const resourceType = (isMimePdf || isExtPdf) ? 'raw' : 'auto';
 
-        console.log("FORCE TYPE:", resourceType); // This MUST say 'raw'
+        const originalName = req.file.originalname;
+        const nameWithoutExt = path.parse(originalName).name;
 
-        // Upload to Cloudinary
+        const publicId = resourceType === 'raw' ? originalName : nameWithoutExt;
+
         const result = await cloudinary.uploader.upload(req.file.path, {
             folder: 'trainalytics_uploads',
+            resource_type: resourceType,
+            public_id: publicId,
             use_filename: true,
-            resource_type: resourceType
+            unique_filename: false
         });
 
-        // Delete local file
         fs.unlinkSync(req.file.path);
 
         res.json({
@@ -40,7 +37,11 @@ export async function uploadFile(req, res) {
     } catch (error) {
         console.error('Cloudinary Upload Error:', error);
         if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (unlinkError) {
+                console.error('Error deleting temp file:', unlinkError);
+            }
         }
         res.status(500).json({ error: 'Upload failed' });
     }

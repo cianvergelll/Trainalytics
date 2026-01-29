@@ -168,7 +168,6 @@ export async function updateStudentDetails(req, res) {
 
         if (user.role === 'student') {
             const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
-
             if (rows.length === 0 || rows[0].Extra1 !== id) {
                 return res.status(403).json({ error: 'Forbidden: You can only update your own profile.' });
             }
@@ -179,7 +178,13 @@ export async function updateStudentDetails(req, res) {
                 'BirthDate',
                 'Section',
                 'Email',
-                'ContactNumber'
+                'ContactNumber',
+                'ProfilePicture',
+                'HasMOA', 'MOA_File',
+                'HasWaiver', 'Waiver_File',
+                'HasEndorsement', 'Endorsement_File',
+                'HasEvaluation', 'Evaluation_File',
+                'HasCompletion', 'Completion_File'
             ];
 
             const filteredUpdates = {};
@@ -194,7 +199,6 @@ export async function updateStudentDetails(req, res) {
             }
 
             const success = await studentsService.updateStudent(id, filteredUpdates);
-
             if (!success) {
                 return res.json({ message: 'Update failed or no changes detected.' });
             }
