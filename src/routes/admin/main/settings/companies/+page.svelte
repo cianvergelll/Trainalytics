@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import SideNav from '$lib/components/SideNav.svelte';
 	import AddCompanyModal from '$lib/components/AddCompanyModal.svelte';
+	import ViewCompanyModal from '$lib/components/ViewCompanyModal.svelte';
 
 	let companies = $state([]);
 	let searchTerm = $state('');
@@ -10,6 +11,19 @@
 	let loading = $state(false);
 	let error = $state('');
 	let debounceTimer;
+
+	let showViewModal = $state(false);
+	let selectedCompany = $state(null);
+
+	function handleView(company) {
+		selectedCompany = company;
+		showViewModal = true;
+	}
+
+	function handleEdit(company) {
+		selectedCompany = company;
+		showAddModal = true;
+	}
 
 	onMount(() => {
 		fetchCompanies();
@@ -80,6 +94,11 @@
 		} catch (e) {
 			alert('Network error.');
 		}
+	}
+
+	function handleAddClick() {
+		selectedCompany = null;
+		showAddModal = true;
 	}
 
 	function handleSuccess() {
@@ -167,7 +186,7 @@
 
 						{#if !isArchivedView}
 							<button
-								onclick={() => (showAddModal = true)}
+								onclick={handleAddClick}
 								class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-green-600"
 							>
 								<span class="text-lg leading-none">+</span> Add Company
@@ -236,6 +255,7 @@
 										<td class="px-6 py-4 text-center">
 											<div class="flex justify-center gap-3">
 												<button
+													onclick={() => handleView(company)}
 													class="text-blue-600 transition-colors hover:text-blue-800"
 													title="View Details"
 												>
@@ -262,6 +282,7 @@
 
 												{#if !isArchivedView}
 													<button
+														onclick={() => handleEdit(company)}
 														class="text-orange-500 transition-colors hover:text-orange-700"
 														title="Edit"
 													>
@@ -336,8 +357,21 @@
 	</div>
 </div>
 
+<ViewCompanyModal
+	show={showViewModal}
+	company={selectedCompany}
+	on:close={() => {
+		showViewModal = false;
+		selectedCompany = null;
+	}}
+/>
+
 <AddCompanyModal
 	show={showAddModal}
-	on:close={() => (showAddModal = false)}
+	companyToEdit={selectedCompany}
+	on:close={() => {
+		showAddModal = false;
+		selectedCompany = null;
+	}}
 	on:success={handleSuccess}
 />

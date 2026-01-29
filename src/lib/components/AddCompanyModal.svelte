@@ -2,14 +2,30 @@
 	import { createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
 
-	export let show = false;
+	// Accept companyToEdit prop
+	let { show = false, companyToEdit = null } = $props();
 
-	let name = '';
-	let address = '';
-	let email = '';
-	let contact = '';
-	let timeout = '5:00 PM'; // Default
-	let loading = false;
+	let name = $state('');
+	let address = $state('');
+	let email = $state('');
+	let contact = $state('');
+	let timeout = $state('5:00 PM');
+	let loading = $state(false);
+
+	// Reactively populate form when modal opens or companyToEdit changes
+	$effect(() => {
+		if (show) {
+			if (companyToEdit) {
+				name = companyToEdit.CompanyName;
+				address = companyToEdit.Address;
+				email = companyToEdit.Email;
+				contact = companyToEdit.ContactNumber;
+				timeout = companyToEdit.TimeOut;
+			} else {
+				resetForm();
+			}
+		}
+	});
 
 	async function handleSubmit() {
 		if (!name) return alert('Company Name is required');
@@ -17,8 +33,14 @@
 
 		try {
 			const token = localStorage.getItem('sessionToken');
-			const res = await fetch('/api/companies', {
-				method: 'POST',
+
+			// Determine URL and Method based on Edit Mode
+			const url = companyToEdit ? `/api/companies/${companyToEdit.ID}` : '/api/companies';
+
+			const method = companyToEdit ? 'PUT' : 'POST';
+
+			const res = await fetch(url, {
+				method: method,
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${token}`
@@ -27,10 +49,10 @@
 			});
 
 			if (res.ok) {
-				dispatch('success');
+				dispatch('success'); // Parent refreshes list
 				closeModal();
 			} else {
-				alert('Failed to add company');
+				alert('Failed to save company');
 			}
 		} catch (e) {
 			console.error(e);
@@ -40,18 +62,26 @@
 	}
 
 	function closeModal() {
+		dispatch('close');
+		// Small delay to prevent flickering reset while closing
+		setTimeout(resetForm, 200);
+	}
+
+	function resetForm() {
 		name = '';
 		address = '';
 		email = '';
 		contact = '';
-		dispatch('close');
+		timeout = '5:00 PM';
 	}
 </script>
 
 {#if show}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
 		<div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
-			<h2 class="mb-4 text-xl font-bold text-gray-800">Add New Company</h2>
+			<h2 class="mb-4 text-xl font-bold text-gray-800">
+				{companyToEdit ? 'Edit Company' : 'Add New Company'}
+			</h2>
 
 			<div class="space-y-4">
 				<div>
@@ -112,7 +142,7 @@
 					disabled={loading}
 					class="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
 				>
-					{loading ? 'Saving...' : 'Add Company'}
+					{loading ? 'Saving...' : companyToEdit ? 'Update' : 'Add Company'}
 				</button>
 			</div>
 		</div>

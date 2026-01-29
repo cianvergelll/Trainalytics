@@ -44,3 +44,23 @@ export async function restoreCompany(req, res) {
         res.status(500).json({ error: 'Failed to restore company' });
     }
 }
+
+export async function editCompany(req, res) {
+    try {
+        const { id } = req.params;
+        const { name, address, email, contact, timeout } = req.body;
+
+        if (!name) return res.status(400).json({ error: 'Company Name is required' });
+
+        const success = await companyService.updateCompany(id, { name, address, email, contact, timeout });
+
+        if (!success) {
+            return res.status(404).json({ error: 'Company not found' });
+        }
+
+        res.json({ message: 'Company updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update company' });
+    }
+}

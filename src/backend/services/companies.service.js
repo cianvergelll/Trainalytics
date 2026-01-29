@@ -40,3 +40,14 @@ export async function toggleArchiveCompany(id, isArchived) {
     );
     return result.affectedRows > 0;
 }
+
+export async function updateCompany(id, data) {
+    const { name, address, email, contact, timeout } = data;
+    const [result] = await pool.query(
+        `UPDATE im_cec_company_list 
+         SET CompanyName = ?, Address = ?, Email = ?, ContactNumber = ?, TimeOut = ?
+         WHERE ID = ?`,
+        [name, address, email, contact, timeout, id]
+    );
+    return result.affectedRows > 0;
+}
