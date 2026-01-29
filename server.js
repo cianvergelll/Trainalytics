@@ -13,6 +13,8 @@ import attendancesRoutes from './src/backend/routes/attendances.routes.js';
 import complaintsRoutes from './src/backend/routes/complaints.routes.js';
 import dashboardRoutes from './src/backend/routes/dashboard.routes.js';
 import companyRoutes from './src/backend/routes/companies.routes.js';
+import uploadRoutes from './src/backend/routes/upload.routes.js';
+
 
 dotenv.config();
 const app = express();
@@ -30,6 +32,7 @@ app.use('/api/attendances', attendancesRoutes);
 app.use('/api/complaints', complaintsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/companies', companyRoutes);
+app.use('/api/upload', uploadRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
