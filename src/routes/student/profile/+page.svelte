@@ -44,13 +44,17 @@
 
 	async function fetchStudentDetails() {
 		try {
+			studentData = {};
+			isLoading = true;
+			error = '';
+
 			const token = localStorage.getItem('sessionToken');
 			if (!token) {
 				goto('/login');
 				return;
 			}
 
-			const authRes = await fetch(`/api/auth/me?t=${new Date().getTime()}`, {
+			const authRes = await fetch(`/api/auth/me?t=${Date.now()}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 
@@ -65,7 +69,7 @@
 				return;
 			}
 
-			const res = await fetch(`/api/students/${studentId}`, {
+			const res = await fetch(`/api/students/${studentId}?t=${Date.now()}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
 

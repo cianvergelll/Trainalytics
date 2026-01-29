@@ -131,11 +131,19 @@ export async function setStudentArchiveStatus(studentId, isArchived) {
 }
 
 export async function getStudentByStudentId(studentId) {
-    const [rows] = await pool.query(
-        'SELECT * FROM im_cec_students WHERE StudentID = ?',
-        [studentId]
-    );
-    return rows[0];
+    const query = `
+        SELECT * FROM im_cec_students 
+        WHERE StudentID = ? 
+        LIMIT 1
+    `;
+
+    try {
+        const [rows] = await pool.query(query, [studentId]);
+        return rows[0];
+    } catch (error) {
+        console.error('Database Error in getStudentByStudentId:', error);
+        throw error;
+    }
 }
 
 export async function updateStudent(studentId, data) {
