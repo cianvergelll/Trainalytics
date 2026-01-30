@@ -47,7 +47,7 @@
 
 	<nav class="flex-1 px-3 py-2">
 		<ul class="space-y-1">
-			{#each [{ name: 'Dashboard', href: '/student/dashboard', icon: 'layout-grid' }, { name: 'Profile', href: '/student/profile', icon: 'user' }, { name: 'Notifications', href: '/bill-reminder', icon: 'bell' }, { name: 'Journals', href: '/student/journals', icon: 'book-open' }, { name: 'Attendance', href: '/student/attendance', icon: 'calendar-check' }, { name: 'Complaints', href: '/notifications', icon: 'alert-circle' }, { name: 'Settings', href: '/foo', icon: 'settings' }] as item}
+			{#each [{ name: 'Dashboard', href: '/student/dashboard', icon: 'layout-grid' }, { name: 'Profile', href: '/student/profile', icon: 'user' }, { name: 'Notifications', href: '/bill-reminder', icon: 'bell' }, { name: 'Journals', href: '/student/journals', icon: 'book-open' }, { name: 'Attendance', href: '/student/attendance', icon: 'calendar-check' }, { name: 'Complaints', href: '/student/complaints', icon: 'alert-circle' }, { name: 'Settings', href: '/foo', icon: 'settings' }] as item}
 				<li>
 					<a
 						href={item.href}
