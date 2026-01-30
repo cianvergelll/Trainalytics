@@ -16,6 +16,18 @@
 	let studentData = $state({});
 	let originalData = $state({});
 
+	let modal = $state({
+		show: false,
+		title: '',
+		message: '',
+		isProcessing: false,
+		isSuccess: false,
+		isConfirmation: false,
+		isError: false
+	});
+
+	let pendingAction = $state(null);
+
 	let documentList = [
 		{
 			name: 'Memorandum of Agreement',
@@ -23,12 +35,7 @@
 			fileKey: 'MOA_File',
 			statusKey: 'MOA_Status'
 		},
-		{
-			name: 'Parent Waiver',
-			key: 'HasWaiver',
-			fileKey: 'Waiver_File',
-			statusKey: 'Waiver_Status'
-		},
+		{ name: 'Parent Waiver', key: 'HasWaiver', fileKey: 'Waiver_File', statusKey: 'Waiver_Status' },
 		{
 			name: 'Endorsement Letter',
 			key: 'HasEndorsement',
@@ -133,7 +140,15 @@
 			companyOptions.some((c) => c.CompanyName === inputName);
 
 		if (!isValid) {
-			alert(`"${inputName}" is not in the Company List.\nPlease select a valid company or "None".`);
+			modal = {
+				show: true,
+				title: 'Invalid Company',
+				message: `"${inputName}" is not in the Company List. Please select a valid company or "None".`,
+				isProcessing: false,
+				isSuccess: false,
+				isError: true,
+				isConfirmation: false
+			};
 			return;
 		}
 
@@ -153,18 +168,58 @@
 				originalData = { ...studentData };
 				isEditing = false;
 			} else {
-				alert('Failed to save changes.');
+				modal = {
+					show: true,
+					title: 'Error',
+					message: 'Failed to save changes.',
+					isProcessing: false,
+					isSuccess: false,
+					isError: true
+				};
 			}
 		} catch (e) {
 			console.error(e);
-			alert('Network error while saving.');
+			modal = {
+				show: true,
+				title: 'Network Error',
+				message: 'Could not connect to the server.',
+				isProcessing: false,
+				isSuccess: false,
+				isError: true
+			};
 		} finally {
 			isSaving = false;
 		}
 	}
 
-	async function updateDocumentStatus(doc, newStatus) {
-		if (!confirm(`Are you sure you want to mark ${doc.name} as ${newStatus}?`)) return;
+	function updateDocumentStatus(doc, newStatus) {
+		pendingAction = { doc, newStatus };
+
+		modal = {
+			show: true,
+			title: newStatus === 'Verified' ? 'Approve Document?' : 'Reject Document?',
+			message: `Are you sure you want to mark ${doc.name} as ${newStatus}?`,
+			isProcessing: false,
+			isSuccess: false,
+			isConfirmation: true,
+			isError: false
+		};
+	}
+
+	async function proceedWithUpdate() {
+		if (!pendingAction) return;
+
+		const { doc, newStatus } = pendingAction;
+
+		modal = {
+			show: true,
+			title: 'Updating Status...',
+			message: 'Please wait.',
+			isProcessing: true,
+			isSuccess: false,
+			isConfirmation: false,
+			isError: false
+		};
 
 		try {
 			const token = localStorage.getItem('sessionToken');
@@ -183,13 +238,33 @@
 
 			if (res.ok) {
 				studentData[doc.statusKey] = newStatus;
+
+				modal = {
+					show: true,
+					title: 'Success',
+					message: `Document marked as ${newStatus}.`,
+					isProcessing: false,
+					isSuccess: true,
+					isConfirmation: false,
+					isError: false
+				};
 			} else {
 				const err = await res.json();
-				alert(err.error || 'Failed to update status');
+				throw new Error(err.error || 'Failed to update status');
 			}
 		} catch (e) {
 			console.error(e);
-			alert('Error updating document status');
+			modal = {
+				show: true,
+				title: 'Error',
+				message: 'Failed to update document status.',
+				isProcessing: false,
+				isSuccess: false,
+				isConfirmation: false,
+				isError: true
+			};
+		} finally {
+			pendingAction = null;
 		}
 	}
 
@@ -277,12 +352,13 @@
 										stroke-width="2.5"
 										stroke="currentColor"
 										class="h-4 w-4 text-gray-600"
-										><path
+									>
+										<path
 											stroke-linecap="round"
 											stroke-linejoin="round"
 											d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-										/></svg
-									>
+										/>
+									</svg>
 									<span class="text-sm font-bold tracking-wide text-neutral-600 uppercase"
 										>Back</span
 									>
@@ -434,7 +510,6 @@
 							</div>
 						</div>
 					</div>
-
 					<div
 						class="w-full overflow-hidden rounded-xl border border-gray-100 bg-white p-8 shadow-sm"
 					>
@@ -604,7 +679,6 @@
 							</div>
 						</div>
 					</div>
-
 					<div
 						class="w-full overflow-hidden rounded-xl border border-gray-100 bg-white p-8 shadow-sm"
 					>
@@ -739,7 +813,6 @@
 													/>
 												</svg>
 											</a>
-
 											<a
 												href={studentData[doc.fileKey]?.replace(
 													'/upload/',
@@ -813,9 +886,8 @@
 										{:else}
 											<span
 												class="rounded bg-gray-100 px-2 py-1 text-[10px] font-bold tracking-wider text-gray-400 uppercase"
+												>Missing</span
 											>
-												Missing
-											</span>
 										{/if}
 									</div>
 								</div>
@@ -827,3 +899,97 @@
 		</div>
 	</div>
 </div>
+
+{#if modal.show}
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+	>
+		<div
+			class="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-2xl ring-1 ring-gray-200"
+		>
+			{#if modal.isProcessing}
+				<div class="mb-4 flex justify-center">
+					<div
+						class="h-12 w-12 animate-spin rounded-full border-4 border-green-500 border-t-transparent"
+					></div>
+				</div>
+			{:else if modal.isConfirmation}
+				<div class="mb-4 flex justify-center">
+					<div class="rounded-full bg-blue-100 p-3 text-blue-600">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="h-8 w-8"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+							/>
+						</svg>
+					</div>
+				</div>
+			{:else if modal.isError}
+				<div class="mb-4 flex justify-center">
+					<div class="rounded-full bg-red-100 p-3 text-red-600">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="3"
+							stroke="currentColor"
+							class="h-8 w-8"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</div>
+				</div>
+			{:else if modal.isSuccess}
+				<div class="mb-4 flex justify-center">
+					<div class="rounded-full bg-green-100 p-3 text-green-600">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="3"
+							stroke="currentColor"
+							class="h-8 w-8"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+						</svg>
+					</div>
+				</div>
+			{/if}
+
+			<h3 class="text-xl font-bold text-gray-900">{modal.title}</h3>
+			<p class="mt-2 text-sm text-gray-500">{modal.message}</p>
+
+			<div class="mt-6 flex justify-center gap-3">
+				{#if modal.isConfirmation}
+					<button
+						onclick={() => (modal.show = false)}
+						class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+					>
+						Cancel
+					</button>
+					<button
+						onclick={proceedWithUpdate}
+						class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+					>
+						Confirm
+					</button>
+				{:else if !modal.isProcessing}
+					<button
+						onclick={() => (modal.show = false)}
+						class={`w-full rounded-lg py-2.5 text-sm font-semibold text-white shadow-sm transition-colors ${modal.isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+					>
+						Close
+					</button>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
