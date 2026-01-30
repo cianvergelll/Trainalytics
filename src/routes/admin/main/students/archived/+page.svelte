@@ -17,6 +17,20 @@
 	let showRestoreModal = $state(false);
 	let studentToRestoreId = $state(null);
 
+	function clearSessionCache(prefix) {
+		if (typeof sessionStorage === 'undefined') return;
+		Object.keys(sessionStorage).forEach((key) => {
+			if (key.startsWith(prefix)) {
+				sessionStorage.removeItem(key);
+			}
+		});
+	}
+
+	function handleManualRefresh() {
+		clearSessionCache('students_archived');
+		fetchArchivedStudents(currentPage, searchTerm);
+	}
+
 	async function fetchArchivedStudents(page, search = '') {
 		const params = new URLSearchParams({
 			page,
@@ -84,7 +98,10 @@
 			if (res.ok) {
 				successMessage = 'Student restored successfully.';
 				setTimeout(() => (successMessage = ''), 3000);
-				sessionStorage.clear();
+
+				clearSessionCache('students_archived');
+				clearSessionCache('students');
+
 				fetchArchivedStudents(currentPage, searchTerm);
 			} else {
 				const err = await res.json();
@@ -94,6 +111,7 @@
 			console.error('Error restoring student:', e);
 			error = 'Network error while restoring student.';
 		} finally {
+			showRestoreModal = false;
 			studentToRestoreId = null;
 		}
 	}
@@ -105,7 +123,8 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			sessionStorage.clear();
+			clearSessionCache('students_archived');
+			currentPage = 1;
 			fetchArchivedStudents(1, searchTerm);
 		}, 300);
 	}
@@ -168,7 +187,28 @@
 						</div>
 					</div>
 				</div>
-				<div class="flex items-center gap-4">
+				<div class="flex items-center gap-2">
+					<button
+						onclick={handleManualRefresh}
+						class="rounded-lg border border-gray-300 bg-white p-2 text-gray-600 transition-colors hover:bg-gray-50"
+						title="Refresh Data"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="size-5"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+							/>
+						</svg>
+					</button>
+
 					<button
 						onclick={() => goto('/admin/main/students')}
 						class="rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 font-medium text-gray-700 hover:bg-gray-200"

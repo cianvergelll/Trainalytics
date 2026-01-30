@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
+	import { clearSessionCache } from '../../../../backend/utils/cache';
 
 	let attendances = $state([]);
 	let currentPage = $state(1);
@@ -10,6 +11,11 @@
 	let debounceTimer;
 	const limit = 10;
 	let error = $state('');
+
+	function handleManualRefresh() {
+		clearSessionCache('attendances');
+		fetchAttendances(currentPage, searchTerm);
+	}
 
 	async function fetchAttendances(page, search = '') {
 		const params = new URLSearchParams({ page, limit, search: search });
@@ -72,7 +78,7 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			sessionStorage.clear();
+			clearSessionCache('attendances');
 			fetchAttendances(1, searchTerm);
 		}, 300);
 	}
@@ -103,9 +109,33 @@
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
-		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-800">Attendance</h1>
-			<p class="text-sm text-gray-500">Pages / Attendance / Attendance Sheet List</p>
+		<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+			<div>
+				<h1 class="text-3xl font-bold text-gray-800">Attendance</h1>
+				<p class="text-sm text-gray-500">Pages / Attendance / Attendance Sheet List</p>
+			</div>
+			<div class="flex items-center gap-2">
+				<button
+					onclick={handleManualRefresh}
+					class="rounded-lg border border-gray-300 bg-white p-2 text-gray-600 transition-colors hover:bg-gray-50"
+					title="Refresh Data"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke-width="2"
+						stroke="currentColor"
+						class="size-5"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+						/>
+					</svg>
+				</button>
+			</div>
 		</div>
 
 		{#if error}
