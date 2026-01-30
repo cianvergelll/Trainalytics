@@ -23,12 +23,44 @@
 		isConfirmation: false
 	});
 
+	// 1. Document List includes Medical File and status keys
 	let documentList = [
-		{ name: 'Memorandum of Agreement', key: 'HasMOA', fileKey: 'MOA_File' },
-		{ name: 'Parent Waiver', key: 'HasWaiver', fileKey: 'Waiver_File' },
-		{ name: 'Endorsement Letter', key: 'HasEndorsement', fileKey: 'Endorsement_File' },
-		{ name: 'Evaluation Form', key: 'HasEvaluation', fileKey: 'Evaluation_File' },
-		{ name: 'Certificate of Completion', key: 'HasCompletion', fileKey: 'Completion_File' }
+		{
+			name: 'Memorandum of Agreement',
+			key: 'HasMOA',
+			fileKey: 'MOA_File',
+			statusKey: 'MOA_Status'
+		},
+		{
+			name: 'Parent Waiver',
+			key: 'HasWaiver',
+			fileKey: 'Waiver_File',
+			statusKey: 'Waiver_Status'
+		},
+		{
+			name: 'Endorsement Letter',
+			key: 'HasEndorsement',
+			fileKey: 'Endorsement_File',
+			statusKey: 'Endorsement_Status'
+		},
+		{
+			name: 'Evaluation Form',
+			key: 'HasEvaluation',
+			fileKey: 'Evaluation_File',
+			statusKey: 'Evaluation_Status'
+		},
+		{
+			name: 'Certificate of Completion',
+			key: 'HasCompletion',
+			fileKey: 'Completion_File',
+			statusKey: 'Completion_Status'
+		},
+		{
+			name: 'Medical Clearance',
+			key: 'HasMedical',
+			fileKey: 'Medical_File',
+			statusKey: 'Medical_Status'
+		}
 	];
 
 	function formatDateForInput(dateString) {
@@ -156,15 +188,33 @@
 
 			const { url } = await uploadRes.json();
 
+			// 2. Update local state with URL, Boolean, and STATUS
 			studentData[docItem.fileKey] = url;
 			studentData[docItem.key] = 1;
+			studentData[docItem.statusKey] = 'Submitted'; // <--- Set Status to Submitted
 
-			await saveChanges();
+			// Save these specific changes
+			const updates = {
+				[docItem.fileKey]: url,
+				[docItem.key]: 1,
+				[docItem.statusKey]: 'Submitted'
+			};
+
+			const updateRes = await fetch(`/api/students/${studentId}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify(updates)
+			});
+
+			if (!updateRes.ok) throw new Error('Failed to update student record');
 
 			uploadModal = {
 				show: true,
 				title: 'Success!',
-				message: `${docItem.name} has been uploaded successfully.`,
+				message: `${docItem.name} has been uploaded and marked as Submitted.`,
 				isProcessing: false,
 				isSuccess: true
 			};
@@ -181,23 +231,21 @@
 	}
 
 	function triggerRemoveFile(docItem) {
-		docToRemove = docItem; // Remember which file
+		docToRemove = docItem;
 
-		// Show the Confirmation Modal
 		uploadModal = {
 			show: true,
 			title: 'Remove Document?',
 			message: `Are you sure you want to remove the ${docItem.name}? This cannot be undone.`,
 			isProcessing: false,
 			isSuccess: false,
-			isConfirmation: true // Turn on confirmation mode
+			isConfirmation: true
 		};
 	}
 
 	async function proceedWithRemove() {
 		if (!docToRemove) return;
 
-		// Switch modal to "Processing" state
 		uploadModal = {
 			show: true,
 			title: 'Removing File...',
@@ -213,6 +261,8 @@
 			const updateBody = {
 				[docToRemove.fileKey]: null,
 				[docToRemove.key]: 0
+				// Status is usually cleared by the backend helper we wrote,
+				// but we update UI below.
 			};
 
 			const res = await fetch(`/api/students/${studentData.StudentID}`, {
@@ -226,11 +276,11 @@
 
 			if (!res.ok) throw new Error('Failed to remove file');
 
-			// Update UI
+			// 3. Update UI: Clear URL, Boolean, and Status
 			studentData[docToRemove.fileKey] = null;
 			studentData[docToRemove.key] = 0;
+			studentData[docToRemove.statusKey] = null; // <--- Clear status locally
 
-			// Switch modal to "Success" state
 			uploadModal = {
 				show: true,
 				title: 'Removed Successfully',
@@ -240,7 +290,7 @@
 				isConfirmation: false
 			};
 
-			docToRemove = null; // Cleanup
+			docToRemove = null;
 		} catch (e) {
 			console.error(e);
 			uploadModal = {
@@ -412,7 +462,6 @@
 											{/if}
 										</div>
 									</div>
-
 									<div class="space-y-4 border-gray-100 md:border-r md:px-8">
 										<div class="flex h-9 items-center justify-between">
 											<span class="self-center font-medium text-gray-500">Birthday:</span>
@@ -449,7 +498,6 @@
 											{/if}
 										</div>
 									</div>
-
 									<div class="space-y-4 md:pl-8">
 										<div class="flex h-9 items-center justify-between">
 											<span class="self-center font-medium text-gray-500">Email:</span>
@@ -624,29 +672,34 @@
 												class="truncate text-sm leading-tight font-medium text-gray-700"
 												title={doc.name}>{doc.name}</span
 											>
-											{#if studentData[doc.key]}
-												<span
-													class="flex items-center gap-1 text-[10px] font-medium text-green-600"
-												>
-													<svg
-														xmlns="http://www.w3.org/2000/svg"
-														viewBox="0 0 20 20"
-														fill="currentColor"
-														class="h-3 w-3"
+
+											<div class="mt-1">
+												{#if !studentData[doc.key]}
+													<span
+														class="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-600/10 ring-inset"
 													>
-														<path
-															fill-rule="evenodd"
-															d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-															clip-rule="evenodd"
-														/>
-													</svg>
-													Uploaded
-												</span>
-											{:else}
-												<span class="flex items-center gap-1 text-[10px] font-medium text-red-400"
-													>Missing</span
-												>
-											{/if}
+														Missing
+													</span>
+												{:else if studentData[doc.statusKey] === 'Verified'}
+													<span
+														class="inline-flex items-center rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-600/20 ring-inset"
+													>
+														Verified
+													</span>
+												{:else if studentData[doc.statusKey] === 'Rejected'}
+													<span
+														class="inline-flex items-center rounded-md bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-600/10 ring-inset"
+													>
+														Rejected
+													</span>
+												{:else}
+													<span
+														class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-800 ring-1 ring-yellow-600/20 ring-inset"
+													>
+														Submitted
+													</span>
+												{/if}
+											</div>
 										</div>
 									</div>
 
@@ -705,26 +758,28 @@
 												</svg>
 											</a>
 
-											<button
-												onclick={() => triggerRemoveFile(doc)}
-												class="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
-												title="Remove File"
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-4 w-4"
+											{#if studentData[doc.statusKey] !== 'Verified'}
+												<button
+													onclick={() => triggerRemoveFile(doc)}
+													class="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
+													title="Remove File"
 												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														d="M6 18L18 6M6 6l12 12"
-													/>
-												</svg>
-											</button>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														fill="none"
+														viewBox="0 0 24 24"
+														stroke-width="2"
+														stroke="currentColor"
+														class="h-4 w-4"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															d="M6 18L18 6M6 6l12 12"
+														/>
+													</svg>
+												</button>
+											{/if}
 										{:else}
 											<label
 												class="flex h-8 cursor-pointer items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md"

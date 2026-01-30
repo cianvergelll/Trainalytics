@@ -41,7 +41,7 @@ const getCloudinaryDetails = (url) => {
 const handleCloudinaryDeletion = async (studentId, updates) => {
     const fileColumns = [
         'MOA_File', 'Waiver_File', 'Endorsement_File',
-        'Evaluation_File', 'Completion_File'
+        'Evaluation_File', 'Completion_File', 'Medical_File'
     ];
 
     const filesToRemove = Object.keys(updates).filter(key =>

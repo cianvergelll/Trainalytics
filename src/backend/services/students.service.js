@@ -151,13 +151,20 @@ export async function updateStudent(studentId, data) {
         'StudentName', 'Section', 'Gender', 'BirthDate', 'Email', 'ContactNumber',
         'CompanyName', 'CompanyAddress', 'SupervisorName', 'SupervisorContact', 'SupervisorEmail',
         'AssignedDepartment', 'Position', 'StartDate', 'EndDate', 'TargetHours',
-        'HasMOA', 'HasEndorsement', 'HasWaiver', 'HasCompletion', 'HasEvaluation',
+        'HasMOA', 'HasEndorsement', 'HasWaiver', 'HasCompletion', 'HasEvaluation', 'HasMedical',
         'MOA_File',
         'Waiver_File',
         'Endorsement_File',
         'Completion_File',
+        'Medical_File',
         'Evaluation_File',
-        'ProfilePicture'
+        'ProfilePicture',
+        'MOA_Status',
+        'Waiver_Status',
+        'Endorsement_Status',
+        'Evaluation_Status',
+        'Completion_Status',
+        'Medical_Status'
     ];
 
     const fields = [];
