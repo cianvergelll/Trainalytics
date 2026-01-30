@@ -250,11 +250,12 @@ export async function updateStudentDetails(req, res) {
             const allowedPersonalFields = [
                 'StudentName', 'Gender', 'BirthDate', 'Section', 'Email',
                 'ContactNumber', 'ProfilePicture',
-                'HasMOA', 'MOA_File',
-                'HasWaiver', 'Waiver_File',
-                'HasEndorsement', 'Endorsement_File',
-                'HasEvaluation', 'Evaluation_File',
-                'HasCompletion', 'Completion_File'
+                'HasMOA', 'MOA_File', 'MOA_Status',
+                'HasWaiver', 'Waiver_File', 'Waiver_Status',
+                'HasEndorsement', 'Endorsement_File', 'Endorsement_Status',
+                'HasEvaluation', 'Evaluation_File', 'Evaluation_Status',
+                'HasCompletion', 'Completion_File', 'Completion_Status',
+                'HasMedical', 'Medical_File', 'Medical_Status'
             ];
 
             const filteredUpdates = {};

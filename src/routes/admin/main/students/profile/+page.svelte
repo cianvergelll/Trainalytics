@@ -16,7 +16,6 @@
 	let studentData = $state({});
 	let originalData = $state({});
 
-	// 1. Updated Document List with Status Keys and Medical File
 	let documentList = [
 		{
 			name: 'Memorandum of Agreement',
@@ -164,7 +163,6 @@
 		}
 	}
 
-	// 2. New Function to Handle Document Status Updates (Approve/Reject)
 	async function updateDocumentStatus(doc, newStatus) {
 		if (!confirm(`Are you sure you want to mark ${doc.name} as ${newStatus}?`)) return;
 
@@ -184,7 +182,6 @@
 			});
 
 			if (res.ok) {
-				// Update local state immediately
 				studentData[doc.statusKey] = newStatus;
 			} else {
 				const err = await res.json();

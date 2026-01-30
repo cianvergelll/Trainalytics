@@ -23,7 +23,6 @@
 		isConfirmation: false
 	});
 
-	// 1. Document List includes Medical File and status keys
 	let documentList = [
 		{
 			name: 'Memorandum of Agreement',
@@ -188,12 +187,10 @@
 
 			const { url } = await uploadRes.json();
 
-			// 2. Update local state with URL, Boolean, and STATUS
 			studentData[docItem.fileKey] = url;
 			studentData[docItem.key] = 1;
-			studentData[docItem.statusKey] = 'Submitted'; // <--- Set Status to Submitted
+			studentData[docItem.statusKey] = 'Submitted';
 
-			// Save these specific changes
 			const updates = {
 				[docItem.fileKey]: url,
 				[docItem.key]: 1,
@@ -261,8 +258,6 @@
 			const updateBody = {
 				[docToRemove.fileKey]: null,
 				[docToRemove.key]: 0
-				// Status is usually cleared by the backend helper we wrote,
-				// but we update UI below.
 			};
 
 			const res = await fetch(`/api/students/${studentData.StudentID}`, {
@@ -276,10 +271,9 @@
 
 			if (!res.ok) throw new Error('Failed to remove file');
 
-			// 3. Update UI: Clear URL, Boolean, and Status
 			studentData[docToRemove.fileKey] = null;
 			studentData[docToRemove.key] = 0;
-			studentData[docToRemove.statusKey] = null; // <--- Clear status locally
+			studentData[docToRemove.statusKey] = null;
 
 			uploadModal = {
 				show: true,
