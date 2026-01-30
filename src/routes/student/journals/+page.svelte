@@ -5,6 +5,7 @@
 	import FilterDropdownPanel from '$lib/components/FilterDropdownPanel.svelte';
 	import AddJournalModal from '$lib/components/AddJournalModal.svelte';
 	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
+	import { clearSessionCache } from '../../../backend/utils/cache';
 
 	let journals = $state([]);
 	let loading = $state(true);
@@ -40,13 +41,7 @@
 		sections: []
 	});
 
-	function clearJournalCache() {
-		Object.keys(sessionStorage).forEach((key) => {
-			if (key.startsWith('student_journals_')) {
-				sessionStorage.removeItem(key);
-			}
-		});
-	}
+	// Removed the old manual clearJournalCache function
 
 	async function init() {
 		try {
@@ -120,7 +115,6 @@
 				totalPages = Math.ceil(totalItems / limit) || 1;
 				currentPage = page;
 
-				// --- SAVE TO CACHE ---
 				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
 				journals = [];
@@ -131,6 +125,11 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function handleManualRefresh() {
+		clearSessionCache('student_journals_');
+		fetchJournals(currentPage);
 	}
 
 	async function handleAddJournal(event) {
@@ -151,7 +150,9 @@
 			if (res.ok) {
 				showAddJournalModal = false;
 				successMessage = 'Journal entry submitted successfully.';
-				clearJournalCache(); // Invalidate cache
+
+				clearSessionCache('student_journals_');
+
 				setTimeout(() => (successMessage = ''), 3000);
 				fetchJournals(1);
 			} else {
@@ -182,7 +183,9 @@
 				showAddJournalModal = false;
 				selectedJournal = null;
 				successMessage = 'Journal updated successfully.';
-				clearJournalCache(); // Invalidate cache
+
+				clearSessionCache('student_journals_');
+
 				setTimeout(() => (successMessage = ''), 3000);
 				fetchJournals(currentPage);
 			} else {
@@ -198,6 +201,7 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
+			clearSessionCache('student_journals_');
 			fetchJournals(1);
 		}, 500);
 	}
@@ -208,12 +212,14 @@
 	}
 
 	function applyFilters() {
+		clearSessionCache('student_journals_');
 		fetchJournals(1);
 		showFilterDropdown = false;
 	}
 
 	function clearFilters() {
 		selectedFilters = { status: [], hours: [], companies: [], sections: [] };
+		clearSessionCache('student_journals_');
 		fetchJournals(1);
 	}
 
@@ -231,6 +237,7 @@
 	function toggleArchivedView() {
 		showArchived = !showArchived;
 		currentPage = 1;
+		clearSessionCache('student_journals_');
 		fetchJournals(1);
 	}
 
@@ -248,7 +255,9 @@
 				successMessage = showArchived
 					? 'Journal restored successfully.'
 					: 'Journal archived successfully.';
-				clearJournalCache();
+
+				clearSessionCache('student_journals_');
+
 				setTimeout(() => (successMessage = ''), 3000);
 				fetchJournals(currentPage);
 			} else {
@@ -326,13 +335,36 @@
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
-		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-900">
-				{showArchived ? 'Archived Journals' : 'My Journals'}
-			</h1>
-			<p class="text-sm text-gray-500">
-				{showArchived ? 'Pages / Journals / Archive' : 'Pages / Journals / Journal Entries List'}
-			</p>
+		<div class="mb-6 flex items-center justify-between">
+			<div>
+				<h1 class="text-3xl font-bold text-gray-900">
+					{showArchived ? 'Archived Journals' : 'My Journals'}
+				</h1>
+				<p class="text-sm text-gray-500">
+					{showArchived ? 'Pages / Journals / Archive' : 'Pages / Journals / Journal Entries List'}
+				</p>
+			</div>
+
+			<button
+				onclick={handleManualRefresh}
+				class="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-green-600"
+				title="Refresh Data"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="1.5"
+					stroke="currentColor"
+					class="size-6"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+					/>
+				</svg>
+			</button>
 		</div>
 
 		{#if successMessage}

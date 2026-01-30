@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import SideNav from '$lib/components/SideNav.svelte';
+	import { clearSessionCache } from '../../../backend/utils/cache';
 
-	// --- State ---
 	let studentInfo = $state({
 		name: '',
 		studentId: '',
@@ -22,16 +22,7 @@
 	let loading = $state(true);
 	let error = $state('');
 
-	function clearAttendanceCache() {
-		Object.keys(sessionStorage).forEach((key) => {
-			if (key.startsWith('student_attendance_')) {
-				sessionStorage.removeItem(key);
-			}
-		});
-	}
-
 	function mapAttendanceData(data, myStudentId, page) {
-		// 1. Map Student Info
 		const s = data.student || {};
 		studentInfo = {
 			name: s.name || s.StudentName || 'Unknown',
@@ -44,7 +35,6 @@
 			isActive: s.IsActive ?? 1
 		};
 
-		// 2. Map Records
 		attendanceRecords = (data.records || []).map((r) => ({
 			date: r.Date,
 			timeIn: r.TimeIn,
@@ -53,13 +43,11 @@
 			status: r.Status
 		}));
 
-		// 3. Pagination
 		const totalItems = data.total || 0;
 		totalPages = Math.ceil(totalItems / limit) || 1;
 		currentPage = page;
 	}
 
-	// --- API Logic ---
 	async function fetchAttendanceData(page) {
 		loading = true;
 		try {
@@ -69,7 +57,6 @@
 				return;
 			}
 
-			// 1. Get Logged-in Student ID
 			const authRes = await fetch(`/api/auth/me`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
@@ -84,7 +71,6 @@
 				return;
 			}
 
-			// --- CHECK CACHE ---
 			const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
 			const queryString = params.toString();
 			const cacheKey = `student_attendance_${myStudentId}_${queryString}`;
@@ -96,8 +82,6 @@
 				loading = false;
 				return;
 			}
-
-			// 2. Fetch Attendance Records if not in cache
 			const res = await fetch(`/api/attendances/student/${myStudentId}?${queryString}`, {
 				headers: { Authorization: `Bearer ${token}` }
 			});
@@ -105,7 +89,6 @@
 			if (res.ok) {
 				const data = await res.json();
 
-				// SAVE TO CACHE
 				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 
 				mapAttendanceData(data, myStudentId, page);
@@ -120,7 +103,11 @@
 		}
 	}
 
-	// --- Helpers ---
+	function handleManualRefresh() {
+		clearSessionCache('student_attendance_');
+		fetchAttendanceData(currentPage);
+	}
+
 	function changePage(newPage) {
 		if (newPage < 1 || newPage > totalPages) return;
 		fetchAttendanceData(newPage);
@@ -252,6 +239,26 @@
 									View and monitor your daily time-in and time-out records.
 								</p>
 							</div>
+							<button
+								onclick={handleManualRefresh}
+								class="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-green-600"
+								title="Refresh Logs"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-6"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+									/>
+								</svg>
+							</button>
 						</div>
 
 						<div class="overflow-hidden rounded-lg border border-gray-200">

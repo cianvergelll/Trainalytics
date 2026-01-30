@@ -6,6 +6,9 @@
 	import ViewStudentComplaintModal from '$lib/components/ViewStudentComplaintModal.svelte';
 	import AddComplaintModal from '$lib/components/AddComplaintModal.svelte';
 
+	// 1. Import Cache Utility
+	import { clearSessionCache } from '$lib/utils/cache';
+
 	let activeTab = $state('active');
 	let complaints = $state([]);
 	let currentPage = $state(1);
@@ -29,20 +32,14 @@
 	function handleSuccess() {
 		showAddModal = false;
 		selectedComplaint = null;
-		clearComplaintCache();
+
+		clearSessionCache('student_complaints_');
+
 		fetchComplaints(1, searchTerm);
 		successMessage = selectedComplaint
 			? 'Complaint updated successfully!'
 			: 'Complaint filed successfully!';
 		setTimeout(() => (successMessage = ''), 3000);
-	}
-
-	function clearComplaintCache() {
-		Object.keys(sessionStorage).forEach((key) => {
-			if (key.startsWith('student_complaints')) {
-				sessionStorage.removeItem(key);
-			}
-		});
 	}
 
 	async function fetchComplaints(page, search = '') {
@@ -81,6 +78,8 @@
 				complaints = data.complaints || [];
 				currentPage = data.currentPage;
 				totalPages = data.totalPages;
+
+				// --- SAVE TO CACHE ---
 				sessionStorage.setItem(cacheKey, JSON.stringify(data));
 			} else {
 				error = 'Failed to load complaints.';
@@ -89,6 +88,11 @@
 			console.error(e);
 			error = 'An error occurred while fetching data.';
 		}
+	}
+
+	function handleManualRefresh() {
+		clearSessionCache('student_complaints_');
+		fetchComplaints(currentPage, searchTerm);
 	}
 
 	function handleView(complaint) {
@@ -129,7 +133,9 @@
 
 			if (res.ok) {
 				showArchiveModal = false;
-				clearComplaintCache();
+
+				clearSessionCache('student_complaints_');
+
 				successMessage = 'Complaint archived successfully.';
 				fetchComplaints(1, searchTerm);
 				setTimeout(() => (successMessage = ''), 3000);
@@ -152,7 +158,8 @@
 			});
 
 			if (res.ok) {
-				clearComplaintCache();
+				clearSessionCache('student_complaints_');
+
 				fetchComplaints(1, searchTerm);
 
 				successMessage = 'Complaint restored to active list.';
@@ -168,7 +175,7 @@
 	function onSearchInput() {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => {
-			clearComplaintCache();
+			clearSessionCache('student_complaints_');
 			fetchComplaints(1, searchTerm);
 		}, 300);
 	}
@@ -211,9 +218,31 @@
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
-		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-800">My Complaints</h1>
-			<p class="text-sm text-gray-500">Pages / Complaints / List</p>
+		<div class="mb-6 flex items-center justify-between">
+			<div>
+				<h1 class="text-3xl font-bold text-gray-800">My Complaints</h1>
+				<p class="text-sm text-gray-500">Pages / Complaints / List</p>
+			</div>
+			<button
+				onclick={handleManualRefresh}
+				class="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-green-600"
+				title="Refresh Complaints"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="1.5"
+					stroke="currentColor"
+					class="size-6"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+					/>
+				</svg>
+			</button>
 		</div>
 
 		{#if error}
@@ -338,6 +367,12 @@
 												class="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800"
 											>
 												Pending
+											</span>
+										{:else if comp.Status?.toLowerCase() === 'investigating' || comp.Status?.toLowerCase() === 'urgent'}
+											<span
+												class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800"
+											>
+												Investigating
 											</span>
 										{:else if comp.Status?.toLowerCase() === 'rejected'}
 											<span
