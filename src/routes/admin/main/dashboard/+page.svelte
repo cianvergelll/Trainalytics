@@ -339,7 +339,7 @@
                 <div class="grid flex-1 grid-cols-2 gap-4">
                     <div class="flex flex-col items-center justify-center">
                         <h3 class="mb-1 text-[10px] font-medium text-gray-500 uppercase">Completed / On-going</h3>
-                        <div class="relative h-28 w-28">
+                        <div class="relative h-50 w-50">
                             <canvas bind:this={completionChartCtx}></canvas>
                         </div>
                         <div class="mt-2 text-[10px] text-gray-500 text-center">
@@ -348,7 +348,7 @@
                     </div>
                     <div class="flex flex-col items-center justify-center">
                         <h3 class="mb-1 text-[10px] font-medium text-gray-500 uppercase">Status</h3>
-                        <div class="relative h-28 w-28">
+                        <div class="relative h-50 w-50">
                             <canvas bind:this={internshipChartCtx}></canvas>
                         </div>
                         <div class="mt-2 text-[10px] text-gray-500 text-center">
