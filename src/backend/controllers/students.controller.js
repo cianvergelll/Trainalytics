@@ -1,5 +1,6 @@
 import cloudinary from '../../config/cloudinary.js';
 import * as studentsService from '../services/students.service.js';
+import { sendNotification } from '../utils/notification.js';
 import { pool } from '../../config/db.js';
 
 const getCloudinaryDetails = (url) => {
@@ -234,12 +235,20 @@ export async function getStudentProfile(req, res) {
     }
 }
 
-
 export async function updateStudentDetails(req, res) {
     try {
         const { id } = req.params;
         const updates = req.body;
         const user = req.user;
+
+        const docNames = {
+            'MOA': 'Memorandum of Agreement',
+            'Waiver': 'Parent Waiver',
+            'Endorsement': 'Endorsement Letter',
+            'Evaluation': 'Evaluation Form',
+            'Completion': 'Certificate of Completion',
+            'Medical': 'Medical Clearance'
+        };
 
         if (user.role === 'student') {
             const [rows] = await pool.query('SELECT Extra1 FROM im_users WHERE ID = ?', [user.id]);
@@ -275,6 +284,22 @@ export async function updateStudentDetails(req, res) {
             if (!success) {
                 return res.json({ message: 'Update failed or no changes detected.' });
             }
+
+            for (const [key, label] of Object.entries(docNames)) {
+                if (filteredUpdates[`${key}_Status`] === 'Submitted') {
+                    const currentStudent = await studentsService.getStudentByStudentId(id);
+                    const name = currentStudent ? currentStudent.StudentName : 'A Student';
+
+                    await sendNotification(req, {
+                        userId: 'ADMIN',
+                        title: 'New Document Uploaded',
+                        message: `${name} uploaded their ${label} for review.`,
+                        type: 'info',
+                        targetUrl: `/admin/main/student/${id}`
+                    });
+                }
+            }
+
             return res.json({ message: 'Personal details updated successfully.' });
         }
 
@@ -283,6 +308,28 @@ export async function updateStudentDetails(req, res) {
         const success = await studentsService.updateStudent(id, updates);
         if (!success) {
             return res.json({ message: 'No changes detected or update failed.' });
+        }
+
+        for (const [key, label] of Object.entries(docNames)) {
+            const status = updates[`${key}_Status`];
+
+            if (status === 'Verified') {
+                await sendNotification(req, {
+                    userId: id,
+                    title: 'Document Approved',
+                    message: `Your ${label} has been verified and approved.`,
+                    type: 'success',
+                    targetUrl: '/student/profile'
+                });
+            } else if (status === 'Rejected') {
+                await sendNotification(req, {
+                    userId: id,
+                    title: 'Document Rejected',
+                    message: `Your ${label} was rejected. Please check the requirements and re-upload.`,
+                    type: 'warning',
+                    targetUrl: '/student/profile'
+                });
+            }
         }
 
         res.json({ message: 'Student updated successfully.' });

@@ -2,49 +2,32 @@
 	import { onMount } from 'svelte';
 	import SideNav from '$lib/components/SideNav.svelte';
 
-	// 1. Filter State
-	let activeFilter = $state('all'); // Options: 'all', 'unread', 'read', 'important'
+	import { notificationsStore, unreadCountStore } from '$lib/stores/socketStore';
 
-	// Static Data (Simulated DB)
-	let notifications = $state([
-		{
-			id: 1,
-			title: 'Journal Approved',
-			message: 'Your Daily Journal for Week 4 has been reviewed and approved by your supervisor.',
-			type: 'success',
-			time: '2 hours ago',
-			read: false
-		},
-		{
-			id: 2,
-			title: 'New Announcement',
-			message:
-				'The internship coordinator has posted a new announcement regarding the midterm evaluation.',
-			type: 'info',
-			time: '5 hours ago',
-			read: false
-		},
-		{
-			id: 3,
-			title: 'Missing Document',
-			message:
-				'Please upload your Medical Clearance. This document is required to continue your internship.',
-			type: 'warning',
-			time: '1 day ago',
-			read: true
-		},
-		{
-			id: 4,
-			title: 'Hours Updated',
-			message:
-				'Your attendance for Monday (Jan 29) has been verified. 8.0 hours added to your total.',
-			type: 'success',
-			time: '2 days ago',
-			read: true
+	let activeFilter = $state('all');
+
+	let notifications = $derived($notificationsStore);
+	let unreadCount = $derived($unreadCountStore);
+
+	onMount(async () => {
+		const token = localStorage.getItem('sessionToken');
+		if (!token) return;
+
+		try {
+			const res = await fetch('/api/notifications', {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (res.ok) {
+				const history = await res.json();
+				notificationsStore.set(history);
+			}
+		} catch (e) {
+			console.error('Failed to load notifications:', e);
 		}
-	]);
+	});
 
-	// 2. Derived State for Filtering
+	// 5. Derived State for Filtering
 	let filteredNotifications = $derived(
 		notifications.filter((n) => {
 			if (activeFilter === 'all') return true;
@@ -55,18 +38,39 @@
 		})
 	);
 
-	let unreadCount = $derived(notifications.filter((n) => !n.read).length);
+	async function markAllAsRead() {
+		notificationsStore.update((n) => n.map((item) => ({ ...item, read: true })));
 
-	// 3. actions
-	function markAllAsRead() {
-		// In a real app, you would call an API here
-		notifications = notifications.map((n) => ({ ...n, read: true }));
+		try {
+			const token = localStorage.getItem('sessionToken');
+			await fetch('/api/notifications/read-all', {
+				method: 'PUT',
+				headers: { Authorization: `Bearer ${token}` }
+			});
+		} catch (e) {
+			console.error('Failed to sync read status:', e);
+		}
 	}
 
-	function markAsRead(id) {
-		const index = notifications.findIndex((n) => n.id === id);
-		if (index !== -1) {
-			notifications[index].read = true;
+	async function handleNotificationClick(notif) {
+		if (!notif.read) {
+			notificationsStore.update((n) =>
+				n.map((item) => (item.id === notif.id ? { ...item, read: true } : item))
+			);
+
+			try {
+				const token = localStorage.getItem('sessionToken');
+				await fetch(`/api/notifications/${notif.id}/read`, {
+					method: 'PUT',
+					headers: { Authorization: `Bearer ${token}` }
+				});
+			} catch (e) {
+				console.error('Failed to mark read:', e);
+			}
+		}
+
+		if (notif.targetUrl) {
+			window.location.href = notif.targetUrl;
 		}
 	}
 
@@ -162,7 +166,7 @@
 					{:else}
 						{#each filteredNotifications as notif (notif.id)}
 							<button
-								onclick={() => markAsRead(notif.id)}
+								onclick={() => handleNotificationClick(notif)}
 								class="relative flex w-full items-start gap-4 rounded-xl border border-gray-100 bg-white p-5 text-left shadow-sm transition-all hover:border-green-200 hover:shadow-md {notif.read
 									? 'opacity-70'
 									: 'bg-white ring-1 ring-gray-100 ring-inset'}"
@@ -181,7 +185,7 @@
 											{notif.title}
 										</h3>
 										<span class="ml-2 text-xs font-medium whitespace-nowrap text-gray-400"
-											>{notif.time}</span
+											>{notif.time || 'Just now'}</span
 										>
 									</div>
 									<p class="mt-1 line-clamp-2 text-sm leading-relaxed text-gray-600">
