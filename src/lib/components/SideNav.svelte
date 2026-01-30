@@ -27,48 +27,117 @@
 	}
 </script>
 
-<div class="flex h-full w-full flex-col rounded-2xl bg-white shadow-2xl">
-	<ul class="flex h-full flex-col items-center justify-start space-y-2 p-4">
-		<li
-			class="mt-3 w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="/student/dashboard">Dashboard</a>
-		</li>
-		<li
-			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="/student/profile">Profile</a>
-		</li>
-		<li
-			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="/bill-reminder">Notification</a>
-		</li>
-		<li
-			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="/student/journals">Journals</a>
-		</li>
-		<li
-			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="/student/attendance">Attendance</a>
-		</li>
-		<li
-			class="w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="/student/complaints">Complaints</a>
-		</li>
+<aside
+	class="fixed inset-y-4 left-4 z-50 flex h-[calc(100vh-2rem)] w-64 flex-col rounded-3xl border border-gray-100 bg-white shadow-xl"
+>
+	<div class="p-6">
+		<div class="flex items-center gap-3">
+			<div class="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-purple-100">
+				<img
+					src="https://ui-avatars.com/api/?name=Student+User&background=a855f7&color=fff"
+					alt="Profile"
+				/>
+			</div>
+			<div class="flex flex-col">
+				<span class="text-sm leading-tight font-bold text-gray-700">Student Name</span>
+				<span class="text-[10px] text-gray-400">student@trainalytics.com</span>
+			</div>
+		</div>
+	</div>
 
-		<li
-			class="mt-auto w-[95%] rounded-lg py-3 text-center text-lg font-bold transition duration-250 hover:scale-105 hover:bg-gray-100"
-		>
-			<a href="foo">Settings</a>
-		</li>
+	<nav class="flex-1 px-3 py-2">
+		<ul class="space-y-1">
+			{#each [{ name: 'Dashboard', href: '/student/dashboard', icon: 'layout-grid' }, { name: 'Profile', href: '/student/profile', icon: 'user' }, { name: 'Notifications', href: '/bill-reminder', icon: 'bell' }, { name: 'Journals', href: '/student/journals', icon: 'book-open' }, { name: 'Attendance', href: '/student/attendance', icon: 'calendar-check' }, { name: 'Complaints', href: '/notifications', icon: 'alert-circle' }, { name: 'Settings', href: '/foo', icon: 'settings' }] as item}
+				<li>
+					<a
+						href={item.href}
+						class="group flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-400 transition-all hover:bg-purple-50 hover:text-purple-600"
+					>
+						<div class="transition-colors group-hover:text-green-600">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								{#if item.icon === 'layout-grid'}
+									<rect width="7" height="7" x="3" y="3" rx="1" /><rect
+										width="7"
+										height="7"
+										x="14"
+										y="3"
+										rx="1"
+									/><rect width="7" height="7" x="14" y="14" rx="1" /><rect
+										width="7"
+										height="7"
+										x="3"
+										y="14"
+										rx="1"
+									/>
+								{:else if item.icon === 'user'}
+									<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle
+										cx="12"
+										cy="7"
+										r="4"
+									/>
+								{:else if item.icon === 'bell'}
+									<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path
+										d="M10.3 21a1.94 1.94 0 0 0 3.4 0"
+									/>
+								{:else if item.icon === 'book-open'}
+									<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path
+										d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"
+									/>
+								{:else if item.icon === 'calendar-check'}
+									<rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><path d="M16 2v4" /><path
+										d="M8 2v4"
+									/><path d="M3 10h18" /><path d="m9 16 2 2 4-4" />
+								{:else if item.icon === 'alert-circle'}
+									<circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line
+										x1="12"
+										x2="12.01"
+										y1="16"
+										y2="16"
+									/>
+								{:else if item.icon === 'settings'}
+									<path
+										d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+									/><circle cx="12" cy="12" r="3" />
+								{/if}
+							</svg>
+						</div>
+						{item.name}
+					</a>
+				</li>
+			{/each}
+		</ul>
+	</nav>
+
+	<div class="mt-auto border-t border-gray-50 p-4">
 		<button
 			onclick={logout}
-			class="w-[95%] rounded-lg bg-red-500 py-3 text-lg font-bold text-white transition duration-250 hover:scale-105 hover:bg-red-600"
-			>Logout</button
+			class="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-bold text-red-500 transition-all hover:bg-red-500 hover:text-white"
 		>
-	</ul>
-</div>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="18"
+				height="18"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline
+					points="16 17 21 12 16 7"
+				/><line x1="21" x2="9" y1="12" y2="12" /></svg
+			>
+			Logout
+		</button>
+	</div>
+</aside>

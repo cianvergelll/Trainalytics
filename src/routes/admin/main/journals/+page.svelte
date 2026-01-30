@@ -99,7 +99,7 @@
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
 		<div class="mb-6">
-			<h1 class="text-3xl font-bold text-gray-800">Journal Entries List</h1>
+			<h1 class="text-3xl font-bold text-gray-500">Journal Entries List</h1>
 			<p class="text-sm text-gray-500">Pages / Journal / Journal Entries List</p>
 		</div>
 
@@ -114,12 +114,12 @@
 						<input
 							type="text"
 							placeholder="Search..."
-							class="w-64 rounded-lg border border-gray-300 py-2 pr-10 pl-4 focus:border-green-500 focus:outline-none"
+							class="w-64 rounded-lg border border-green-300 py-2 pr-10 pl-4focus:outline-none shadow-md"
 							bind:value={searchTerm}
 							oninput={onSearchInput}
 						/>
 						<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-							<svg class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+							<svg class="h-5 w-5 text-gray-300" viewBox="0 0 20 20" fill="green">
 								<path
 									fill-rule="evenodd"
 									d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
@@ -129,7 +129,7 @@
 						</div>
 					</div>
 					<button
-						class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100"
+						class="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-gray-600 hover:bg-gray-100 shadow-md"
 					>
 						Filter By
 						<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -141,51 +141,54 @@
 				</div>
 			</div>
 
-			<div class="flex-grow overflow-auto rounded-lg border">
-				<table class="min-w-full table-auto text-left">
-					<thead class="sticky top-0 border-b bg-gray-50">
-						<tr class="bg-green-50">
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Student Name</th>
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Section</th>
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Company</th>
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Date</th>
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Status</th>
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Date Approved</th>
-							<th class="px-4 py-3 text-sm font-medium text-gray-600">Action</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y">
-						{#each journals as journal (journal.ID)}
-							<tr class="hover:bg-gray-50">
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
-									>{journal.StudentName}</td
-								>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{journal.Section}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{journal.Company}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">{journal.Date}</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap">
-									{#if journal.Status === 'approved'}
-										<span
-											class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800"
-											>Approved</span
-										>
-									{:else if journal.Status === 'pending'}
-										<span
-											class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800"
-											>Pending</span
-										>
-									{:else if journal.Status === 'denied'}
-										<span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
-											>Denied</span
-										>
-									{/if}
-								</td>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800"
-									>{journal.DateApproved}</td
-								>
-								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
-									<div class="flex items-center gap-3">
-										<button
+	<div class="flex-grow overflow-auto border-t border-green-100">
+    <table class="min-w-full table-auto text-left">
+        <thead class="sticky top-0 z-10 bg-green-50">
+            <tr>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Student Name</th>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Section</th>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Company</th>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Date</th>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">Date Approved</th>
+                <th class="border-b border-gray-100 px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500 text-right">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50 bg-white">
+            {#each journals as journal (journal.ID)}
+                <tr class="group transition-all duration-200 hover:bg-gray-100 hover:text-[0.84rem]">
+                    <td class="whitespace-nowrap px-1 py-1">
+                        <div class="flex items-center gap-1">
+                            <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500 uppercase transition-colors group-hover:bg-green-100 group-hover:text-green-600">
+                                {journal.StudentName.charAt(0)}
+                            </div>
+                            <span class="text-sm font-semibold text-gray-700">{journal.StudentName}</span>
+                        </div>
+                    </td>
+                    <td class="whitespace-nowrap px-6 py-5 text-sm text-gray-500">{journal.Section}</td>
+                    <td class="whitespace-nowrap px-6 py-5 text-sm text-gray-500">{journal.Company}</td>
+                    <td class="whitespace-nowrap px-6 py-5 text-sm text-gray-500">{journal.Date}</td>
+                    <td class="whitespace-nowrap px-6 py-5 text-sm">
+                        {#if journal.Status === 'approved'}
+                            <span class="inline-flex items-center gap-1.5 font-medium text-green-600">
+                                <span class="h-1.5 w-1.5 rounded-full bg-green-600"></span>
+                                Approved
+                            </span>
+                        {:else if journal.Status === 'pending'}
+                            <span class="inline-flex items-center gap-1.5 font-medium text-yellow-600">
+                                <span class="h-1.5 w-1.5 rounded-full bg-yellow-600"></span>
+                                Pending
+                            </span>
+                        {:else if journal.Status === 'denied'}
+                            <span class="inline-flex items-center gap-1.5 font-medium text-red-600">
+                                <span class="h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                                Denied
+                            </span>
+                        {/if}
+                    </td>
+                    <td class="whitespace-nowrap px-6 py-5 text-sm text-gray-500">{journal.DateApproved}</td>
+                    <td class="whitespace-nowrap px-6 py-5 text-right">
+                        <button
 											onclick={handleView(journal)}
 											class="text-emerald-700 transition-colors duration-200 hover:text-emerald-900"
 											title="View Announcement"
@@ -210,20 +213,19 @@
 												/>
 											</svg>
 										</button>
-									</div>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
+                    </td>
+                </tr>
+            {/each}
+        </tbody>
+    </table>
+</div>
 
-			<div class="mt-auto flex items-center justify-center pt-4">
+			<div class="mt-auto flex items-center justify-center pt-10">
 				<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
 					<button
 						onclick={() => changePage(currentPage - 1)}
 						disabled={currentPage === 1}
-						class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
+						class="relative inline-flex items-center rounded-l-md px-1 py-1 text-gray-400  hover:bg-gray-50 disabled:opacity-50"
 						>Prev</button
 					>
 					{#each Array(totalPages) as _, i}
@@ -233,12 +235,12 @@
 								onclick={() => changePage(page)}
 								class:bg-green-500={currentPage === page}
 								class:text-white={currentPage === page}
-								class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-gray-300 ring-inset hover:bg-gray-50"
+								class="relative inline-flex items-center px-4 py-2 text-sm font-semibold  hover:bg-gray-50"
 								>{page}</button
 							>
 						{:else if page === currentPage - 2 || page === currentPage + 2}
 							<span
-								class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-gray-300 ring-inset"
+								class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 "
 								>...</span
 							>
 						{/if}
@@ -246,7 +248,7 @@
 					<button
 						onclick={() => changePage(currentPage + 1)}
 						disabled={currentPage === totalPages}
-						class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 disabled:opacity-50"
+						class="relative inline-flex items-center rounded-r-md px-1 py-1 text-gray-400  hover:bg-gray-50 disabled:opacity-50"
 						>Next</button
 					>
 				</nav>
