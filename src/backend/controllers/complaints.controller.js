@@ -1,6 +1,6 @@
 import * as complaintsService from '../services/complaints.service.js';
-import * as studentsService from '../services/students.service.js'; // Import student service
-import { sendNotification } from '../utils/notification.js'; // Import notification utility
+import * as studentsService from '../services/students.service.js';
+import { sendNotification } from '../utils/notification.js';
 import { pool } from '../../config/db.js';
 
 export async function getComplaints(req, res) {
@@ -36,6 +36,37 @@ export async function updateStatus(req, res) {
         }
 
         const updatedComplaint = await complaintsService.updateComplaintStatus(complaintId, status);
+
+        const [rows] = await pool.query('SELECT StudentID, Title FROM im_cec_complaints WHERE ID = ?', [complaintId]);
+
+        if (rows.length > 0) {
+            const complaintData = rows[0];
+            const studentId = complaintData.StudentID;
+            const title = complaintData.Title || 'Complaint';
+
+            let notifTitle = 'Complaint Update';
+            let notifMessage = `Your complaint "${title}" has been updated to ${status}.`;
+            let notifType = 'info';
+
+            if (status === 'Resolved') {
+                notifTitle = 'Complaint Resolved';
+                notifMessage = `Good news! Your complaint "${title}" has been marked as Resolved.`;
+                notifType = 'success';
+            } else if (status === 'Investigating' || status === 'Urgent') {
+                notifTitle = 'Complaint Under Investigation';
+                notifMessage = `An admin is now investigating your complaint: "${title}".`;
+                notifType = 'info';
+            }
+
+            await sendNotification(req, {
+                userId: studentId,
+                title: notifTitle,
+                message: notifMessage,
+                type: notifType,
+                targetUrl: '/student/complaints'
+            });
+        }
+
         res.json(updatedComplaint);
 
     } catch (err) {
@@ -98,24 +129,20 @@ export async function fileComplaint(req, res) {
             date
         });
 
-        // --- NOTIFICATION LOGIC START ---
         try {
-            // Fetch student details to get the name
             const studentProfile = await studentsService.getStudentByStudentId(studentId);
             const studentName = studentProfile ? studentProfile.StudentName : 'A Student';
 
             await sendNotification(req, {
-                userId: 'ADMIN', // Send to Admin Room
+                userId: 'ADMIN',
                 title: 'New Complaint Filed',
                 message: `${studentName} filed a complaint: "${title}".`,
-                type: 'warning', // Use 'warning' for complaints to grab attention
+                type: 'warning',
                 targetUrl: '/admin/main/complaints'
             });
         } catch (notifErr) {
             console.error('Failed to send notification for complaint:', notifErr);
-            // Don't fail the request if notification fails, just log it
         }
-        // --- NOTIFICATION LOGIC END ---
 
         res.status(201).json(newComplaint);
     } catch (err) {

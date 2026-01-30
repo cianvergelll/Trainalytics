@@ -25,11 +25,11 @@
 
 	function getStatusColor(status) {
 		switch (status?.toLowerCase()) {
-			case 'resolved':
+			case 'Resolved':
 				return 'bg-green-100 text-green-800 border-green-200';
-			case 'pending':
+			case 'Pending':
 				return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-			case 'investigating':
+			case 'Investigating':
 				return 'bg-red-100 text-red-800 border-red-200';
 			default:
 				return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -140,9 +140,9 @@
 						bind:value={selectedStatus}
 						class="rounded-lg border-gray-300 py-2 pr-8 pl-3 text-sm focus:border-green-500 focus:ring-green-500 focus:outline-none"
 					>
-						<option value="pending">Pending</option>
-						<option value="resolved">Resolved</option>
-						<option value="urgent">Urgent</option>
+						<option value="Pending">Pending</option>
+						<option value="Resolved">Resolved</option>
+						<option value="Investigating">Investigating</option>
 					</select>
 				</div>
 				<button

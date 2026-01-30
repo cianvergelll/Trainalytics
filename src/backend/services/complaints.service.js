@@ -66,7 +66,7 @@ export async function getComplaintsPaginated(page = 1, limit = 10, searchTerm = 
 }
 
 export async function updateComplaintStatus(complaintId, newStatus) {
-    const validStatuses = ['resolved', 'pending', 'investigating'];
+    const validStatuses = ['Resolved', 'Pending', 'Investigating'];
     if (!validStatuses.includes(newStatus)) {
         throw new Error('Invalid status value.');
     }
