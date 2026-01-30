@@ -269,282 +269,157 @@
 </script>
 
 <svelte:head>
-	<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </svelte:head>
 
+{#if showAddStudentModal}
 <AddStudentModal
-	show={showAddStudentModal}
-	sections={sections ?? []}
-	schools={schools ?? []}
-	on:close={() => (showAddStudentModal = false)}
-	on:add={handleAddStudent}
+    show={showAddStudentModal}
+    sections={sections ?? []}
+    schools={schools ?? []}
+    on:close={() => (showAddStudentModal = false)}
+    on:add={handleAddStudent}
 />
+{/if}
 
-<div class="flex h-screen gap-4 bg-gray-100 p-4">
-	<div class="h-[95vh] w-1/5 flex-shrink-0 self-center">
-		<SideNavAdmin />
-	</div>
+<div class="flex h-screen w-full gap-2 bg-gray-50 p-2 overflow-hidden {showAddStudentModal ? 'blur-[2px] transition-all' : ''}">
+    
+    <div class="h-full w-1/5 flex-shrink-0">
+        <SideNavAdmin />
+    </div>
 
-	<div class="flex-1 space-y-3 overflow-y-auto p-4">
-		<h1 class="text-3xl font-bold text-gray-800">Welcome, {adminUsername}!</h1>
+    <div class="flex flex-1 flex-col space-y-2 p-2 overflow-hidden">
+        
+        <h1 class="text-2xl font-bold text-gray-800 border-b border-gray-300 pb-2 mb-6">
+            Welcome, {adminUsername}!
+        </h1>
 
-		<div class="flex items-center justify-between">
-			<div class="flex space-x-4">
-				<a
-					href="/admin/main/students"
-					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow hover:bg-green-600"
-				>
-					<svg
-						class="h-5 w-5"
-						xmlns="http://www.w3.org/2000/svg"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke-width="1.5"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-						/>
-					</svg>
-					View Students
-				</a>
-				<a
-					href="/admin/main/attendance"
-					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow hover:bg-green-600"
-				>
-					<svg
-						class="h-5 w-5"
-						xmlns="http://www.w3.org/2000/svg"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke-width="1.5"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-						/>
-					</svg>
-					View Attendance
-				</a>
-				<a
-					href="/admin/main/journals"
-					class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow hover:bg-green-600"
-				>
-					<svg
-						class="h-5 w-5"
-						xmlns="http://www.w3.org/2000/svg"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke-width="1.5"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-						/>
-					</svg>
-					View Journal
-				</a>
-			</div>
-			<button
-				onclick={() => (showAddStudentModal = true)}
-				class="flex items-center gap-2 rounded-lg bg-green-500 px-4 py-2 font-medium text-white shadow hover:bg-green-600"
-			>
-				<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"
-					><path
-						d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"
-					/></svg
-				>
-				Add Students
-			</button>
-		</div>
+        <div class="flex items-center justify-between">
+            <div class="flex space-x-2">
+                {#each ['Students', 'Attendance', 'Journal'] as label}
+                <a href="/admin/main/{label.toLowerCase()}" class="flex items-center gap-2 rounded-lg bg-green-500 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-green-600">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                    View {label}
+                </a>
+                {/each}
+            </div>
+            
+            <button 
+                onclick={() => (showAddStudentModal = true)} 
+                class="flex items-center gap-2 rounded-lg border-2 border-[#1DB954] bg-transparent px-6 py-2 text-sm font-bold text-[#1DB954] transition-all duration-300 hover:bg-[#1DB954] hover:text-white shadow-sm active:scale-95"
+            >
+                <span class="text-xl font-light">+</span> 
+                Add Students
+            </button>
+        </div>
 
-		{#if error}
-			<p class="mb-4 w-full rounded bg-red-100 p-2 text-center text-sm text-red-700">{error}</p>
-		{/if}
 
-		<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-			<div class="flex items-center justify-between rounded-lg bg-white p-6 shadow">
-				<div>
-					<p class="text-sm font-medium text-gray-500">Total No. of Students</p>
-					<p class="text-3xl font-bold text-gray-800">{stats.totalStudents}</p>
-				</div>
-				<div class="rounded-full bg-green-100 p-3 text-green-600">
-					<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-						><path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-						/></svg
-					>
-				</div>
-			</div>
-			<div class="flex items-center justify-between rounded-lg bg-white p-6 shadow">
-				<div>
-					<p class="text-sm font-medium text-gray-500">Total Companies</p>
-					<p class="text-3xl font-bold text-gray-800">{stats.totalCompanies}</p>
-				</div>
-				<div class="rounded-full bg-green-100 p-3 text-green-600">
-					<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-						><path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-						/></svg
-					>
-				</div>
-			</div>
-			<div
-				class="flex flex-col items-center justify-center rounded-lg bg-green-500 p-6 text-white shadow"
-			>
-				<p class="text-4xl font-bold">
-					{currentTime.toLocaleTimeString('en-US', {
-						hour: 'numeric',
-						minute: '2-digit',
-						hour12: true
-					})}
-				</p>
-				<p class="text-sm">
-					{currentTime.toLocaleDateString('en-US', {
-						weekday: 'short',
-						month: 'short',
-						day: 'numeric'
-					})}
-				</p>
-			</div>
-		</div>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="flex items-center justify-between rounded-lg bg-white p-4 shadow-sm border border-gray-100">
+                <div>
+                    <p class="text-xs font-medium text-gray-500 uppercase">Total Students</p>
+                    <p class="text-2xl font-bold text-gray-800">{stats.totalStudents}</p>
+                </div>
+                <div class="rounded-full bg-green-50 p-2 text-green-600">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                </div>
+            </div>
+            <div class="flex items-center justify-between rounded-lg bg-white p-4 shadow-sm border border-gray-100">
+                <div>
+                    <p class="text-xs font-medium text-gray-500 uppercase">Total Companies</p>
+                    <p class="text-2xl font-bold text-gray-800">{stats.totalCompanies}</p>
+                </div>
+                <div class="rounded-full bg-green-50 p-2 text-green-600">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                </div>
+            </div>
+            <div class="flex flex-col items-center justify-center rounded-lg bg-green-500 p-2 text-white shadow">
+                <p class="text-2xl font-bold leading-tight">{currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
+                <p class="text-xs opacity-90">{currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+            </div>
+        </div>
 
-		<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-			<div class="rounded-lg bg-white p-4 shadow lg:col-span-2">
-				<h2 class="mb-2 text-lg font-semibold text-gray-700">Internship Count</h2>
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2" style="height: 220px;">
-					<div class="flex flex-col items-center">
-						<h3 class="mb-1 text-xs font-medium text-gray-600">Completed / On-going</h3>
-						<div class="relative h-32 w-32">
-							<canvas bind:this={completionChartCtx}></canvas>
-						</div>
-						<div class="mt-4 flex w-full justify-around text-xs">
-							<div class="flex items-center gap-1">
-								<span class="h-3 w-3 rounded-full bg-green-500"></span>
-								<span>Completed: {stats.completionStats.completed}</span>
-							</div>
-							<div class="flex items-center gap-1">
-								<span class="h-3 w-3 rounded-full bg-yellow-400"></span>
-								<span>On-going: {stats.completionStats.ongoing}</span>
-							</div>
-							<div class="flex items-center gap-1">
-								<span class="h-3 w-3 rounded-full bg-blue-500"></span>
-								<span>Processing: {stats.completionStats.processing}</span>
-							</div>
-						</div>
-						<div class="mt-1 text-center text-xs text-gray-500">
-							({(
-								(stats.completionStats.completed /
-									(stats.completionStats.completed + stats.completionStats.ongoing || 1)) *
-								100
-							).toFixed(1)}% /
-							{(
-								(stats.completionStats.ongoing /
-									(stats.completionStats.completed + stats.completionStats.ongoing || 1)) *
-								100
-							).toFixed(1)}%)
-						</div>
-					</div>
-					<div class="flex flex-col items-center">
-						<h3 class="mb-1 text-xs font-medium text-gray-600">With / No Internship</h3>
-						<div class="relative h-32 w-32">
-							<canvas bind:this={internshipChartCtx}></canvas>
-						</div>
-						<div class="mt-4 flex w-full justify-around text-xs">
-							<div class="flex items-center gap-1">
-								<span class="h-3 w-3 rounded-full bg-green-500"></span>
-								<span>With Internship: {stats.internshipStats.withInternship}</span>
-							</div>
-							<div class="flex items-center gap-1">
-								<span class="h-3 w-3 rounded-full bg-red-500"></span>
-								<span>No Internship: {stats.internshipStats.noInternship}</span>
-							</div>
-						</div>
-						<div class="mt-1 text-center text-xs text-gray-500">
-							({(
-								(stats.internshipStats.withInternship /
-									(stats.internshipStats.withInternship + stats.internshipStats.noInternship ||
-										1)) *
-								100
-							).toFixed(1)}% /
-							{(
-								(stats.internshipStats.noInternship /
-									(stats.internshipStats.withInternship + stats.internshipStats.noInternship ||
-										1)) *
-								100
-							).toFixed(1)}%)
-						</div>
-					</div>
-				</div>
-			</div>
+        <div class="grid flex-1 grid-cols-3 gap-4 overflow-hidden">
+            <div class="col-span-2 rounded-lg bg-white p-4 shadow-sm border border-gray-100 flex flex-col">
+                <h2 class="mb-2 text-md font-semibold text-gray-700">Internship Count</h2>
+                <div class="grid flex-1 grid-cols-2 gap-4">
+                    <div class="flex flex-col items-center justify-center">
+                        <h3 class="mb-1 text-[10px] font-medium text-gray-500 uppercase">Completed / On-going</h3>
+                        <div class="relative h-28 w-28">
+                            <canvas bind:this={completionChartCtx}></canvas>
+                        </div>
+                        <div class="mt-2 text-[10px] text-gray-500 text-center">
+                            {stats.completionStats.completed} Completed | {stats.completionStats.ongoing} On-going
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center">
+                        <h3 class="mb-1 text-[10px] font-medium text-gray-500 uppercase">Status</h3>
+                        <div class="relative h-28 w-28">
+                            <canvas bind:this={internshipChartCtx}></canvas>
+                        </div>
+                        <div class="mt-2 text-[10px] text-gray-500 text-center">
+                            {stats.internshipStats.withInternship} With | {stats.internshipStats.noInternship} Without
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-			<div class="space-y-4">
-				<div class="rounded-lg bg-white p-4 shadow">
-					<div class="mb-3 flex items-center justify-between">
-						<button onclick={() => changeMonth(-1)} class="rounded p-1 hover:bg-gray-100"
-							>&lt;</button
-						>
-						<h3 class="text-sm font-semibold">{getMonthName(currentMonth)} {currentYear}</h3>
-						<button onclick={() => changeMonth(1)} class="rounded p-1 hover:bg-gray-100"
-							>&gt;</button
-						>
-					</div>
-					<div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
-						<div>SUN</div>
-						<div>MON</div>
-						<div>TUE</div>
-						<div>WED</div>
-						<div>THU</div>
-						<div>FRI</div>
-						<div>SAT</div>
-					</div>
-					<div class="mt-1 grid grid-cols-7 gap-1 text-center text-sm">
-						{#each calendarDays as day}
-							{#if day}
-								<div
-									class={`flex h-7 w-7 items-center justify-center rounded-full ${day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear() ? 'bg-green-500 text-white' : 'hover:bg-gray-100'}`}
-								>
-									{day}
-								</div>
-							{:else}
-								<div></div>
-							{/if}
-						{/each}
-					</div>
-				</div>
+   <div class="flex flex-col gap-2 h-full max-h-[calc(100vh-15rem)]">
+    <div class="flex flex-col flex-1 min-h-0 rounded-[1rem] border border-gray-100 bg-white p-4 shadow-sm overflow-hidden">
+        <div class="mb-3 flex items-center justify-between px-1">
+            <h3 class="flex items-center gap-2 text-xs font-bold text-gray-800">
+                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 text-red-500 text-[10px]">🔔</span>
+                Notifications
+            </h3>
+            <span class="rounded-full bg-red-500 px-2 py-0.5 text-[9px] font-bold text-white">3</span>
+        </div>
 
-				<div class="rounded-lg bg-white p-4 shadow">
-					<h3 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-						<svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor"
-							><path
-								fill-rule="evenodd"
-								d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"
-								clip-rule="evenodd"
-							/></svg
-						>
-						Notifications
-					</h3>
-					<div class="space-y-2 text-xs text-gray-600">
-						<p>Diana Barleta Filed a complaint <span class="text-gray-400">Just now</span></p>
-						<p>Diana Barleta Filed a complaint <span class="text-gray-400">Just now</span></p>
-						<p>Diana Barleta Filed a complaint <span class="text-gray-400">2 min ago</span></p>
-						<p>Ethan Barleta Submitted a journal <span class="text-gray-400">1 hour ago</span></p>
-						<p>New Student Added <span class="text-gray-400">Yesterday</span></p>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+        <div class="space-y-2 overflow-y-auto pr-1 scrollbar-hide">
+            {#each [
+                { user: 'Diana B.', msg: 'Filed a complaint', time: 'now', color: 'bg-red-500' },
+                { user: 'Ethan B.', msg: 'Sent a journal', time: '1h', color: 'bg-green-500' },
+                { user: 'Admin', msg: 'Updated settings', time: '2h', color: 'bg-blue-500' },
+                { user: 'System', msg: 'Backup complete', time: '3h', color: 'bg-gray-500' }
+            ] as note}
+                <div class="flex items-center justify-between rounded-2xl bg-gray-50 p-2.5 transition hover:bg-gray-100 cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex h-7 w-7 items-center justify-center rounded-full bg-white text-[10px] font-bold shadow-sm border border-gray-100">
+                            {note.user[0]}
+                            <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white {note.color}"></span>
+                        </div>
+                        <div class="flex flex-col leading-tight">
+                            <p class="text-[10px] font-bold text-gray-700">
+                                {note.user} <span class="font-normal text-gray-500">{note.msg}</span>
+                            </p>
+                            <span class="text-[8px] text-gray-400">{note.time}</span>
+                        </div>
+                    </div>
+                </div>
+            {/each}
+        </div>
+    </div>
+
+    <div class="flex-shrink-0 rounded-[1rem] bg-white p-4 shadow-sm border border-gray-100">
+        <div class="mb-4 flex items-center justify-between text-xs">
+            <button class="text-gray-400 hover:text-gray-800" onclick={() => changeMonth(-1)}>&lt;</button>
+            <span class="font-bold text-gray-800">{getMonthName(currentMonth)} {currentYear}</span>
+            <button class="text-gray-400 hover:text-gray-800" onclick={() => changeMonth(1)}>&gt;</button>
+        </div>
+        
+        <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-gray-300">
+            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+        </div>
+        
+        <div class="mt-2 grid grid-cols-7 gap-2 text-center text-[11px]">
+            {#each calendarDays as day}
+                <div class="h-6 w-6 flex items-center justify-center rounded-full transition-all
+                    {day === today.getDate() ? 'bg-[#1DB954] text-white font-bold' : 'text-gray-600 hover:bg-gray-50'}">
+                    {day || ''}
+                </div>
+            {/each}
+        </div>
+    </div>
+            </div>
+        </div>
+    </div>
 </div>
