@@ -3,7 +3,7 @@ import { pool } from '../../config/db.js';
 export async function getUserNotifications(userId) {
     const [rows] = await pool.query(
         `SELECT * FROM im_cec_notifications 
-         WHERE UserID = ? 
+         WHERE (UserID = ? OR UserID = 'ALL')
          ORDER BY CreatedAt DESC 
          LIMIT 50`,
         [userId]

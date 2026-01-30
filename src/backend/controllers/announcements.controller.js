@@ -1,4 +1,5 @@
 import * as announcementsService from '../services/announcements.service.js';
+import { sendNotification } from '../utils/notification.js';
 
 export async function getAnnouncements(req, res) {
     try {
@@ -48,6 +49,18 @@ export async function setAnnouncement(req, res) {
         };
 
         const newAnnouncement = await announcementsService.createAnnouncement(announcementData, adminId);
+
+        try {
+            await sendNotification(req, {
+                userId: 'ALL',
+                title: 'New Announcement',
+                message: title,
+                type: 'info',
+                targetUrl: '/student/announcements'
+            });
+        } catch (notifErr) {
+            console.error('Failed to send announcement notification:', notifErr);
+        }
 
         res.status(201).json(newAnnouncement);
     } catch (err) {
