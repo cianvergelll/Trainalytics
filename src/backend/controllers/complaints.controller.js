@@ -1,4 +1,6 @@
 import * as complaintsService from '../services/complaints.service.js';
+import * as studentsService from '../services/students.service.js'; // Import student service
+import { sendNotification } from '../utils/notification.js'; // Import notification utility
 import { pool } from '../../config/db.js';
 
 export async function getComplaints(req, res) {
@@ -95,6 +97,25 @@ export async function fileComplaint(req, res) {
             description,
             date
         });
+
+        // --- NOTIFICATION LOGIC START ---
+        try {
+            // Fetch student details to get the name
+            const studentProfile = await studentsService.getStudentByStudentId(studentId);
+            const studentName = studentProfile ? studentProfile.StudentName : 'A Student';
+
+            await sendNotification(req, {
+                userId: 'ADMIN', // Send to Admin Room
+                title: 'New Complaint Filed',
+                message: `${studentName} filed a complaint: "${title}".`,
+                type: 'warning', // Use 'warning' for complaints to grab attention
+                targetUrl: '/admin/main/complaints'
+            });
+        } catch (notifErr) {
+            console.error('Failed to send notification for complaint:', notifErr);
+            // Don't fail the request if notification fails, just log it
+        }
+        // --- NOTIFICATION LOGIC END ---
 
         res.status(201).json(newComplaint);
     } catch (err) {

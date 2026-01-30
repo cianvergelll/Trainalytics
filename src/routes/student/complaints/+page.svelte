@@ -5,7 +5,6 @@
 	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
 	import ViewStudentComplaintModal from '$lib/components/ViewStudentComplaintModal.svelte';
 	import AddComplaintModal from '$lib/components/AddComplaintModal.svelte';
-	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
 	let activeTab = $state('active');
 	let complaints = $state([]);
@@ -63,7 +62,6 @@
 		try {
 			const token = localStorage.getItem('sessionToken');
 
-			// Determine endpoint based on active tab
 			let endpoint =
 				activeTab === 'active'
 					? '/api/complaints/my-complaints'
@@ -209,7 +207,7 @@
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4">
 	<div class="h-full w-1/5 flex-shrink-0">
-		<SideNavAdmin activePage="complaints" />
+		<SideNav activePage="complaints" />
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
