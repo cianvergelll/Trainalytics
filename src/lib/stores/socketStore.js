@@ -27,12 +27,12 @@ export const initSocket = (userId, role) => {
             ? 'admin_room'
             : `student_${userId}`;
 
-        console.log(`Joining room: ${room}`);
+        // console.log(`Joining room: ${room}`);
         socket.emit('join_room', room);
     });
 
     socket.on('receive_notification', (newNotification) => {
-        console.log('New Notification Received:', newNotification);
+        // console.log('New Notification Received:', newNotification);
 
         notificationsStore.update(current => [newNotification, ...current]);
 

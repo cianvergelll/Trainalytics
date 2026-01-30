@@ -10,8 +10,8 @@ export async function uploadFile(req, res) {
         const originalName = req.file.originalname;
         const sanitizedName = originalName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '');
 
-        console.log("🚀 STARTING UPLOAD (RAW MODE)");
-        console.log("File:", sanitizedName);
+        // console.log("🚀 STARTING UPLOAD (RAW MODE)");
+        // console.log("File:", sanitizedName);
 
         const isMimePdf = req.file.mimetype === 'application/pdf';
         const isExtPdf = path.extname(sanitizedName).toLowerCase() === '.pdf';
@@ -30,9 +30,9 @@ export async function uploadFile(req, res) {
             overwrite: true
         });
 
-        console.log("✅ UPLOAD SUCCESS");
-        console.log("Type:", result.resource_type);
-        console.log("URL:", result.secure_url);
+        // console.log("✅ UPLOAD SUCCESS");
+        // console.log("Type:", result.resource_type);
+        // console.log("URL:", result.secure_url);
 
         fs.unlinkSync(req.file.path);
 

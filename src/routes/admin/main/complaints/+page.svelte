@@ -18,13 +18,16 @@
 	let selectedComplaint = $state(null);
 
 	function getStatusClasses(status) {
+		if (!status) return 'bg-gray-100 text-gray-800';
+
 		switch (status) {
-			case 'resolved':
+			case 'Resolved':
 				return 'bg-green-100 text-green-800';
-			case 'pending':
+			case 'Pending':
 				return 'bg-yellow-100 text-yellow-800';
-			case 'urgent':
-				return 'bg-red-100 text-red-800';
+			case 'Investigating':
+			case 'Urgent':
+				return 'bg-blue-100 text-blue-800';
 			default:
 				return 'bg-gray-100 text-gray-800';
 		}
@@ -245,9 +248,9 @@
 											comp.Status
 										)} appearance-none rounded-md border-none px-2 py-1 text-center text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none"
 									>
-										<option value="pending">Pending</option>
-										<option value="resolved">Resolved</option>
-										<option value="urgent">Urgent</option>
+										<option value="Pending">Pending</option>
+										<option value="Resolved">Resolved</option>
+										<option value="Investigating">Investigating</option>
 									</select>
 								</td>
 								<td class="px-4 py-3 text-sm whitespace-nowrap text-gray-800">
