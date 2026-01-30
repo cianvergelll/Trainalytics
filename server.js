@@ -29,7 +29,10 @@ const io = new Server(httpServer, {
     }
 });
 
-app.set('io', io);
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);

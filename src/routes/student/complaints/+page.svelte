@@ -5,9 +5,7 @@
 	import ConfirmationModal from '$lib/components/ConfirmationModal.svelte';
 	import ViewStudentComplaintModal from '$lib/components/ViewStudentComplaintModal.svelte';
 	import AddComplaintModal from '$lib/components/AddComplaintModal.svelte';
-
-	// 1. Import Cache Utility
-	import { clearSessionCache } from '$lib/utils/cache';
+	import { clearSessionCache } from '../../../backend/utils/cache';
 
 	let activeTab = $state('active');
 	let complaints = $state([]);

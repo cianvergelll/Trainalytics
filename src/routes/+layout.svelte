@@ -6,7 +6,7 @@
 	import { page } from '$app/stores';
 	import { userSession } from '$lib/sessionStore.js';
 	import { jwtDecode } from 'jwt-decode';
-	import { initSocket } from '$lib/stores/socketStore'; // 1. Import the socket store
+	import { initSocket } from '$lib/stores/socketStore';
 
 	let { children } = $props();
 
@@ -112,12 +112,10 @@
 			} else {
 				try {
 					const decoded = jwtDecode(token);
-					const identifier = decoded.role === 'student' ? decoded.studentId : 'admin';
 
-					if (decoded.role === 'student' && !decoded.studentId) {
+					if (decoded.id) {
+						console.log(`🔌 Initializing Socket for ID: ${decoded.id} (${decoded.role})`);
 						initSocket(decoded.id, decoded.role);
-					} else {
-						initSocket(identifier, decoded.role);
 					}
 				} catch (err) {
 					console.error('Failed to init socket:', err);

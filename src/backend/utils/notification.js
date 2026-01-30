@@ -2,31 +2,38 @@ import { pool } from '../../config/db.js';
 
 export const sendNotification = async (req, { userId, title, message, type, targetUrl }) => {
     try {
-        const [result] = await pool.query(
-            `INSERT INTO im_cec_notifications (UserID, Title, Message, Type, TargetURL) VALUES (?, ?, ?, ?, ?)`,
-            [userId, title, message, type, targetUrl]
-        );
-
-        const notificationData = {
+        const query = `
+            INSERT INTO im_cec_notifications (UserID, Title, Message, Type, TargetUrl, IsRead)
+            VALUES (?, ?, ?, ?, ?, 0)
+        `;
+        const [result] = await pool.query(query, [userId, title, message, type, targetUrl]);
+        const newNotification = {
             id: result.insertId,
             userId,
             title,
             message,
             type,
             targetUrl,
-            time: 'Just now',
-            read: 0
+            read: 0,
+            time: 'Just now'
         };
 
-        const io = req.app.get('io');
+        if (req && req.io) {
+            let room;
+            if (userId === 'ADMIN' || userId === 'SuperAdmin') {
+                room = 'admin_room';
+            } else if (userId === 'ALL') {
+                room = 'student_ALL';
+            } else {
+                room = `student_${userId}`;
+            }
+            req.io.to(room).emit('receive_notification', newNotification);
 
-        const room = userId === 'ADMIN' ? 'admin_room' : `student_${userId}`;
+        } else {
+            console.error("❌ req.io is MISSING. Socket event NOT sent.");
+        }
 
-        io.to(room).emit('receive_notification', notificationData);
-
-        return true;
     } catch (error) {
-        console.error('Notification Error:', error);
-        return false;
+        console.error('Failed to send notification:', error);
     }
 };

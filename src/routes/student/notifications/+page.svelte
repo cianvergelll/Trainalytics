@@ -1,18 +1,23 @@
 <script>
 	import { onMount } from 'svelte';
 	import SideNav from '$lib/components/SideNav.svelte';
-
 	import { notificationsStore, unreadCountStore } from '$lib/stores/socketStore';
 
 	let activeFilter = $state('all');
 
 	let notifications = $derived($notificationsStore);
 	let unreadCount = $derived($unreadCountStore);
+	let loading = $state(false);
 
-	onMount(async () => {
+	onMount(() => {
+		fetchNotifications();
+	});
+
+	async function fetchNotifications() {
 		const token = localStorage.getItem('sessionToken');
 		if (!token) return;
 
+		loading = true;
 		try {
 			const res = await fetch('/api/notifications', {
 				headers: { Authorization: `Bearer ${token}` }
@@ -24,10 +29,11 @@
 			}
 		} catch (e) {
 			console.error('Failed to load notifications:', e);
+		} finally {
+			loading = false;
 		}
-	});
+	}
 
-	// 5. Derived State for Filtering
 	let filteredNotifications = $derived(
 		notifications.filter((n) => {
 			if (activeFilter === 'all') return true;
@@ -101,10 +107,34 @@
 						</p>
 					</div>
 
-					{#if unreadCount > 0}
+					<div class="flex items-center gap-2">
+						{#if unreadCount > 0}
+							<button
+								onclick={markAllAsRead}
+								class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:text-gray-900"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="2"
+									stroke="currentColor"
+									class="h-4 w-4"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+									/>
+								</svg>
+								Mark all as read
+							</button>
+						{/if}
+
 						<button
-							onclick={markAllAsRead}
-							class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:text-gray-900"
+							onclick={fetchNotifications}
+							class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition-all hover:bg-gray-50 hover:text-green-600"
+							disabled={loading}
 						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -112,17 +142,17 @@
 								viewBox="0 0 24 24"
 								stroke-width="2"
 								stroke="currentColor"
-								class="h-4 w-4"
+								class="h-4 w-4 {loading ? 'animate-spin' : ''}"
 							>
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+									d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
 								/>
 							</svg>
-							Mark all as read
+							Refresh
 						</button>
-					{/if}
+					</div>
 				</div>
 
 				<div class="border-b border-gray-200">
@@ -176,7 +206,6 @@
 								>
 									{@html getIcon(notif.type)}
 								</div>
-
 								<div class="flex-1">
 									<div class="flex items-center justify-between">
 										<h3
@@ -192,7 +221,6 @@
 										{notif.message}
 									</p>
 								</div>
-
 								{#if !notif.read}
 									<div class="absolute top-1/2 right-5 -translate-y-1/2">
 										<div class="h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white"></div>

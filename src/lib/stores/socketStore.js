@@ -9,10 +9,12 @@ export const unreadCountStore = derived(
     ($notifications) => $notifications.filter(n => !n.read).length
 );
 
-let socket;
+export let socket;
 
 export const initSocket = (userId, role) => {
-    if (socket) return;
+    if (socket) {
+        return;
+    }
 
     socket = io('http://localhost:3000', {
         transports: ['websocket'],
@@ -20,32 +22,32 @@ export const initSocket = (userId, role) => {
     });
 
     socket.on('connect', () => {
-        console.log('Socket connected:', socket.id);
         socketConnected.set(true);
 
         const room = role === 'SuperAdmin' || role === 'Coordinator' || role === 'Staff'
             ? 'admin_room'
             : `student_${userId}`;
 
-        // console.log(`Joining room: ${room}`);
+        console.log(`➡️ Requesting to join room: ${room}`);
         socket.emit('join_room', room);
     });
 
     socket.on('receive_notification', (newNotification) => {
-        // console.log('New Notification Received:', newNotification);
 
-        notificationsStore.update(current => [newNotification, ...current]);
-
+        notificationsStore.update(current => {
+            return [newNotification, ...current];
+        });
     });
 
     socket.on('disconnect', () => {
-        console.log('Socket disconnected');
+        console.log('❌ Socket disconnected');
         socketConnected.set(false);
     });
 };
 
 export const disconnectSocket = () => {
     if (socket) {
+        console.log("🛑 Disconnecting socket...");
         socket.disconnect();
         socket = null;
         socketConnected.set(false);
