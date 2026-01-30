@@ -1,7 +1,44 @@
 <script>
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
-	export const errorMessage = '';
+	let studentName = $state('Student');
+	let studentEmail = $state('Loading...');
+	let studentId = $state(null);
+
+	let avatarUrl = $derived(
+		`https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=a855f7&color=fff`
+	);
+
+	async function fetchUserData() {
+		const token = localStorage.getItem('sessionToken');
+		if (!token) return;
+
+		try {
+			const authRes = await fetch('/api/auth/me', {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+
+			if (!authRes.ok) return;
+			const authData = await authRes.json();
+			studentId = authData.studentId;
+
+			if (studentId) {
+				const studentRes = await fetch(`/api/students/${studentId}`, {
+					headers: { Authorization: `Bearer ${token}` }
+				});
+
+				if (studentRes.ok) {
+					const data = await studentRes.json();
+					studentName = data.StudentName;
+					studentEmail = data.Email;
+				}
+			}
+		} catch (e) {
+			console.error('Failed to load sidebar data', e);
+		}
+	}
 
 	async function logout() {
 		const token = localStorage.getItem('sessionToken');
@@ -11,11 +48,9 @@
 		}
 
 		try {
-			const res = await fetch('/api/auth/logout', {
+			await fetch('/api/auth/logout', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ token: token })
 			});
 		} catch (error) {
@@ -25,6 +60,10 @@
 			goto('/login');
 		}
 	}
+
+	onMount(() => {
+		fetchUserData();
+	});
 </script>
 
 <aside
@@ -33,14 +72,15 @@
 	<div class="p-6">
 		<div class="flex items-center gap-3">
 			<div class="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-purple-100">
-				<img
-					src="https://ui-avatars.com/api/?name=Student+User&background=a855f7&color=fff"
-					alt="Profile"
-				/>
+				<img src={avatarUrl} alt="Profile" class="h-full w-full object-cover" />
 			</div>
-			<div class="flex flex-col">
-				<span class="text-sm leading-tight font-bold text-gray-700">Student Name</span>
-				<span class="text-[10px] text-gray-400">student@trainalytics.com</span>
+			<div class="flex flex-col overflow-hidden">
+				<span class="truncate text-sm leading-tight font-bold text-gray-700" title={studentName}>
+					{studentName}
+				</span>
+				<span class="truncate text-[10px] text-gray-400" title={studentEmail}>
+					{studentEmail}
+				</span>
 			</div>
 		</div>
 	</div>
@@ -48,12 +88,20 @@
 	<nav class="flex-1 px-3 py-2">
 		<ul class="space-y-1">
 			{#each [{ name: 'Dashboard', href: '/student/dashboard', icon: 'layout-grid' }, { name: 'Profile', href: '/student/profile', icon: 'user' }, { name: 'Notifications', href: '/bill-reminder', icon: 'bell' }, { name: 'Journals', href: '/student/journals', icon: 'book-open' }, { name: 'Attendance', href: '/student/attendance', icon: 'calendar-check' }, { name: 'Complaints', href: '/student/complaints', icon: 'alert-circle' }, { name: 'Settings', href: '/foo', icon: 'settings' }] as item}
+				{@const isActive = $page.url.pathname === item.href}
 				<li>
 					<a
 						href={item.href}
-						class="group flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-400 transition-all hover:bg-purple-50 hover:text-purple-600"
+						class="group flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium transition-all
+                        {isActive
+							? 'bg-purple-50 font-semibold text-purple-600'
+							: 'text-gray-400 hover:bg-purple-50 hover:text-purple-600'}"
 					>
-						<div class="transition-colors group-hover:text-green-600">
+						<div
+							class="transition-colors {isActive
+								? 'text-purple-600'
+								: 'group-hover:text-purple-600'}"
+						>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								width="18"

@@ -1,5 +1,6 @@
 <script>
 	import SideNav from '$lib/components/SideNav.svelte';
+	import SideNavAdmin from '$lib/components/SideNavAdmin.svelte';
 
 	const companies = [
 		{
@@ -23,7 +24,7 @@
 
 <div class="flex h-screen gap-4 bg-gray-50 p-4 font-sans">
 	<div class="h-full w-1/5 flex-shrink-0">
-		<SideNav activePage="companies" />
+		<SideNavAdmin activePage="companies" />
 	</div>
 
 	<div class="flex h-full flex-1 flex-col rounded-xl bg-white p-8 shadow-lg">
